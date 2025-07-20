@@ -2,8 +2,23 @@
 #define CONFIGURATION_H
 
 #include <stdio.h>
+#include "../remora-hal/hal_configuration.h" // See note below for how to build this file
+
+// control methods for configiration.h or platformio.ini
+#define SPI_CTRL 1
+#define ETH_CTRL 2
 
 namespace Config {
+    #ifdef CONTROL_METHOD
+        constexpr char pruControlMethod = CONTROL_METHOD;   
+        /* set with build flag in PlatformIO.ini
+            build_flags = 
+                -D CONTROL_METHOD=SPI_CTRL ; alternatively ETH_CTRL
+        */
+    #else   // or don't define it and hardcode it here.
+        constexpr char pruControlMethod = SPI_CTRL; // alternatively ETH_CTRL
+    #endif
+
     constexpr uint32_t pruBaseFreq = 40000;        // PRU Base thread ISR update frequency (hz)
     constexpr uint32_t pruServoFreq = 1000;        // PRU Servo thread ISR update frequency (hz)
     constexpr uint32_t oversample = 3;
@@ -38,6 +53,67 @@ namespace Config {
 
     // SPI configuration
     constexpr uint32_t dataBuffSize = 64;          // Size of SPI receive buffer
+
+    // Default blinky program for non spi config
+    constexpr char defaultConfig[] = {
+        0x7B, 0x0A, 0x09, 0x22, 0x42, 0x6F, 0x61, 0x72, 0x64, 0x22, 0x3A, 0x20,
+        0x22, 0x52, 0x65, 0x6D, 0x6F, 0x72, 0x61, 0x22, 0x2C, 0x0A, 0x09, 0x22,
+        0x4D, 0x6F, 0x64, 0x75, 0x6C, 0x65, 0x73, 0x22, 0x3A, 0x5B, 0x0A, 0x09,
+        0x7B, 0x0A, 0x09, 0x22, 0x54, 0x68, 0x72, 0x65, 0x61, 0x64, 0x22, 0x3A,
+        0x20, 0x22, 0x53, 0x65, 0x72, 0x76, 0x6F, 0x22, 0x2C, 0x0A, 0x09, 0x22,
+        0x54, 0x79, 0x70, 0x65, 0x22, 0x3A, 0x20, 0x22, 0x42, 0x6C, 0x69, 0x6E,
+        0x6B, 0x22, 0x2C, 0x0A, 0x09, 0x09, 0x22, 0x43, 0x6F, 0x6D, 0x6D, 0x65,
+        0x6E, 0x74, 0x22, 0x3A, 0x09, 0x09, 0x09, 0x22, 0x42, 0x6C, 0x69, 0x6E,
+        0x6B, 0x79, 0x22, 0x2C, 0x0A, 0x09, 0x09, 0x22, 0x50, 0x69, 0x6E, 0x22,
+        0x3A, 0x09, 0x09, 0x09, 0x09, 0x22, 0x50, 0x42, 0x5F, 0x30, 0x22, 0x2C,
+        0x0A, 0x09, 0x09, 0x22, 0x46, 0x72, 0x65, 0x71, 0x75, 0x65, 0x6E, 0x63,
+        0x79, 0x22, 0x3A, 0x20, 0x09, 0x09, 0x34, 0x0A, 0x09, 0x7D, 0x0A, 0x09,
+        0x5D, 0x0A, 0x7D
+    };
+
+    // Default file config: 
+
+    // {
+    //     "Board": "Remora",
+    //     "Modules":[
+    //     {
+    //     "Thread": "Servo",
+    //     "Type": "Blink",
+    //         "Comment":			"Blinky",
+    //         "Pin":				"PB_0",
+    //         "Frequency": 		4
+    //     }
+    //     ]
+    // }    
 }
+
+/* 
+Explanation of HAL_configuration file:
+
+Some of the hardware specific implementation details cannot be set at the abstract Remora-Core level.
+They need to be implemented depending on your specific Hardware requirements. 
+For example the memory locations of where the JSON file is stored in FLASH for ethernet builds 
+
+Example ../remora-hal/hal_configuration.h file
+-------------------------------
+
+#ifndef HAL_CONFIGURATION_H
+#define HAL_CONFIGURATION_H
+
+#include "stm32f4xx.h"      // Example of STM build, replace with your vendors HAL header file
+
+#include <cstdint>
+
+namespace HAL_Config {
+    constexpr std::uintptr_t JSON_upload_address            = 0x8040000;        
+    constexpr std::uintptr_t JSON_storage_address           = 0x8060000;
+    constexpr std::uintptr_t user_flash_last_page_address   = JSON_storage_address;
+    constexpr std::uintptr_t user_flash_end_address         = JSON_storage_address + (128 * 1024) - 1;
+    constexpr uint32_t JSON_SECTOR                          = FLASH_SECTOR_7;
+}
+#endif
+
+
+*/
 
 #endif

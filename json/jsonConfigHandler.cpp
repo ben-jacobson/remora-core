@@ -20,7 +20,15 @@ uint8_t JsonConfigHandler::loadConfiguration() {
     doc.clear();
 
     // Read and parse the configuration file
-    uint8_t status = readFileContents();
+    uint8_t status;
+
+    if (Config::pruControlMethod == SPI_CTRL)
+        status = readConfigFromSD();
+    else if (Config::pruControlMethod == ETH_CTRL)
+        status = readConfigFromFlash();
+    else
+        status = 0x00; // trigger downstream error. 
+
     if (status != 0x00) {
         return status;
     }
@@ -61,7 +69,7 @@ JsonArray JsonConfigHandler::getModules() {
         return JsonArray();
 }
 
-uint8_t JsonConfigHandler::readFileContents() {
+uint8_t JsonConfigHandler::readConfigFromSD() {
 
 	uint32_t bytesread; // bytes read count
 
@@ -83,7 +91,7 @@ uint8_t JsonConfigHandler::readFileContents() {
     }
 
     int32_t length = f_size(&SDFile);
-    printf("JSON config file lenght = %2ld\n", length);
+    printf("JSON config file length = %2ld\n", length);
 
     __attribute__((aligned(32))) char rtext[length];
     if(f_read(&SDFile, rtext, length, (UINT *)&bytesread) != FR_OK)
@@ -108,6 +116,37 @@ uint8_t JsonConfigHandler::readFileContents() {
 	return makeRemoraStatus(RemoraErrorSource::NO_ERROR, RemoraErrorCode::NO_ERROR);
 }
 
+uint8_t JsonConfigHandler::readConfigFromFlash() {
+    uint32_t jsonLength;
+
+    printf("\nLoading JSON configuration file from Flash memory\n");
+
+    // read byte 0 to determine length to read
+    jsonLength = *(uint32_t*)(HAL_Config::JSON_storage_address);
+
+    if (jsonLength == 0xFFFFFFFF)
+    {
+    	printf("Flash storage location is empty - no config file\n");
+    	printf("Loading default configuration\n\n");
+
+		for (uint32_t i = 0; i < sizeof(Config::defaultConfig); i++)
+		{
+			jsonContent.push_back(Config::defaultConfig[i]);
+		}
+    }
+    else
+    {
+		jsonContent.resize(jsonLength);
+
+		for (uint32_t i = 0; i < jsonLength; i++)
+		{
+			jsonContent.push_back(*(uint8_t*)(HAL_Config::JSON_storage_address + 4 + i));
+		}
+    }
+
+	//printf("\n%s\n\n", jsonContent.c_str());
+    return makeRemoraStatus(RemoraErrorSource::NO_ERROR, RemoraErrorCode::NO_ERROR);
+}
 
 uint8_t JsonConfigHandler::parseJson() {
 	

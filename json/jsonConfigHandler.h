@@ -18,7 +18,8 @@ private:
 	JsonObject thread;
 	//bool configError;
 	uint8_t loadConfiguration();
-	uint8_t readFileContents();
+	uint8_t readConfigFromSD();
+	uint8_t readConfigFromFlash();	
 	uint8_t parseJson();
 
 public:
