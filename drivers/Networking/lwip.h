@@ -8,11 +8,21 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <cstdint>
 
+// Ensure these are included in platformio.ini
+// lib_extra_dirs = 
+//  	Src/remora-core/drivers/Networking	; additional libraries have been added here for portability
+
+
+#include "lwip/init.h"
+#include "lwip/timeouts.h"
+#include "lwip/pbuf.h"
+#include "lwip/udp.h"
+#include "lwip/apps/lwiperf.h"
+#include "lwip/etharp.h"
 #include "lwip/netif.h"
 #include "netif/etharp.h"
-#include "socket.h"
+#include "ioLibrary_Driver/Ethernet/socket.h"
 
 #define ETHERNET_MTU 1500
 

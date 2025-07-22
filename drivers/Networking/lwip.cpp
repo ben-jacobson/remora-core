@@ -9,7 +9,6 @@
 lwip_handle* lwip_handle::active_instance = nullptr;
 const uint8_t lwip_handle::mac[6] = {0x00, 0x08, 0xDC, 0x12, 0x34, 0x56};
 
-
 lwip_handle::lwip_handle() 
 {
     active_instance = this;  // set the active instance

@@ -9,7 +9,8 @@
 wiznet_handle* wiznet_handle::active_instance = nullptr;
 volatile bool wiznet_handle::spin_lock = false;
 
-wiznet_handle::wiznet_handle() {
+wiznet_handle::wiznet_handle(std::shared_ptr<STM32F4_EthComms> comms)
+    : eth_comms(comms) {
     active_instance = this;  // set the active instance for checking that non-static members can be accessed by static members.
 }
 
@@ -80,8 +81,11 @@ void wiznet_handle::wizchip_initialize(void)
 
     reg_wizchip_cris_cbfunc(wizchip_critical_section_lock, wizchip_critical_section_unlock);
     reg_wizchip_cs_cbfunc(wizchip_select, wizchip_deselect);
+    //reg_wizchip_spi_cbfunc(spi_get_byte, spi_put_byte);
+    //reg_wizchip_spiburst_cbfunc(spi_read, spi_write);     
     reg_wizchip_spi_cbfunc(spi_get_byte, spi_put_byte); // TODO - ensure our SPI bus can be statically accessed..
     reg_wizchip_spiburst_cbfunc(spi_read, spi_write);       // and that SPI read/write is done via DMA
+
 
     /* W5x00 initialize */
     uint8_t temp;
