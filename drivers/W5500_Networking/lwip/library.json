@@ -1,7 +1,0 @@
-{
-  "name": "lwip",
-  "build": {
-    "srcDir": "src",
-    "includeDir": "src/include"
-  }
-}

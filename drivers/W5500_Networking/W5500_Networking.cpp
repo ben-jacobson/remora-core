@@ -1,4 +1,5 @@
 #include "W5500_Networking.h"
+#include "remora-hal/STM32F4_EthComms.h" // replace with your hardware specific EthComms implementation
 
 /**
  * Copyright (c) 2022 WIZnet Co.,Ltd
@@ -6,16 +7,8 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-/**
- * ----------------------------------------------------------------------------------------------------
- * Includes
- * ----------------------------------------------------------------------------------------------------
- */
-#include <stdio.h>
-
-void application_layer::EthernetInit()
+void application_layer::EthernetInit(std::shared_ptr<STM32F4_EthComms> ptr_eth_comms, Pin *ptr_csPin, Pin *ptr_rstPin)
 {
-    physical_layer::wizchip_spi_initialize();
     physical_layer::wizchip_cris_initialize();
 
     physical_layer::wizchip_reset();
@@ -29,56 +22,56 @@ void application_layer::EthernetInit()
     // Initialize LWIP in NO_SYS mode
     lwip_init();
 
-    netif_add(&g_netif, &g_ip, &g_mask, &g_gateway, NULL, netif_initialize, netif_input);
-    g_netif.name[0] = 'e';
-    g_netif.name[1] = '0';
+    netif_add(&transport_layer::g_netif, &g_ip, &g_mask, &g_gateway, NULL, transport_layer::netif_initialize, netif_input);
+    transport_layer::g_netif.name[0] = 'e';
+    transport_layer::g_netif.name[1] = '0';
 
     // Assign callbacks for link and status
-    netif_set_link_callback(&g_netif, netif_link_callback);
-    netif_set_status_callback(&g_netif, netif_status_callback);
+    netif_set_link_callback(&transport_layer::g_netif, transport_layer::netif_link_callback);
+    netif_set_status_callback(&transport_layer::g_netif, transport_layer::netif_status_callback);
 
     // MACRAW socket open
-    retval = socket(SOCKET_MACRAW, Sn_MR_MACRAW, PORT_LWIPERF, 0x00);
+    transport_layer::retval = socket(SOCKET_MACRAW, Sn_MR_MACRAW, PORT_LWIPERF, 0x00);
 
-    if (retval < 0)
+    if (transport_layer::retval < 0)
     {
         printf(" MACRAW socket open failed\n");
     }
 
     // Set the default interface and bring it up
-    netif_set_link_up(&g_netif);
-    netif_set_up(&g_netif);
+    netif_set_link_up(&transport_layer::g_netif);
+    netif_set_up(&transport_layer::g_netif);
 }
 
 
 void application_layer::EthernetTasks()
 {
-    getsockopt(SOCKET_MACRAW, SO_RECVBUF, &pack_len);
+    getsockopt(SOCKET_MACRAW, SO_RECVBUF, &transport_layer::pack_len);
 
-    if (pack_len > 0)
+    if (transport_layer::pack_len > 0)
     {
-        pack_len = recv_lwip(SOCKET_MACRAW, (uint8_t *)pack, pack_len);
+        transport_layer::pack_len = transport_layer::recv_lwip(SOCKET_MACRAW, (uint8_t *)transport_layer::pack, transport_layer::pack_len);
 
-        if (pack_len)
+        if (transport_layer::pack_len)
         {
-            p = pbuf_alloc(PBUF_RAW, pack_len, PBUF_POOL);
-            pbuf_take(p, pack, pack_len);
-            free(pack);
+            transport_layer::p = pbuf_alloc(PBUF_RAW, transport_layer::pack_len, PBUF_POOL);
+            pbuf_take(transport_layer::p, transport_layer::pack, transport_layer::pack_len);
+            free(transport_layer::pack);
 
-            pack = static_cast<uint8_t *>(malloc(ETHERNET_MTU));
+            transport_layer::pack = static_cast<uint8_t *>(malloc(ETHERNET_MTU));
         }
         else
         {
             printf(" No packet received\n");
         }
 
-        if (pack_len && p != NULL)
+        if (transport_layer::pack_len && transport_layer::p != NULL)
         {
             LINK_STATS_INC(link.recv);
 
-            if (g_netif.input(p, &g_netif) != ERR_OK)
+            if (transport_layer::g_netif.input(transport_layer::p, &transport_layer::g_netif) != ERR_OK)
             {
-                pbuf_free(p);
+                pbuf_free(transport_layer::p);
             }
         }
     }
@@ -108,78 +101,78 @@ void application_layer::udpServerInit(void)
 
 void application_layer::udp_data_callback(void *arg, struct udp_pcb *upcb, struct pbuf *p, const ip_addr_t *addr, u16_t port)
 {
-	int txlen = 0;
-    int n;
-	struct pbuf *txBuf;
-    uint32_t status;
+	// int txlen = 0;
+    // int n;
+	// struct pbuf *txBuf;
+    // uint32_t status;
 
-    //received data from host needs to go into the inactive buffer
-    rxData_t* rxBuffer = getAltRxBuffer(&rxPingPongBuffer);
-    //data sent to host needs to come from the active buffer
-    txData_t* txBuffer = getCurrentTxBuffer(&txPingPongBuffer);
+    // //received data from host needs to go into the inactive buffer
+    // rxData_t* rxBuffer = getAltRxBuffer(&rxPingPongBuffer);
+    // //data sent to host needs to come from the active buffer
+    // txData_t* txBuffer = getCurrentTxBuffer(&txPingPongBuffer);
 
-	memcpy(&rxBuffer->rxBuffer, p->payload, p->len);
+	// memcpy(&rxBuffer->rxBuffer, p->payload, p->len);
 
-    //received a PRU request, need to copy data and then change pointer assignments.
-    if (rxBuffer->header == PRU_READ || rxBuffer->header == PRU_WRITE) {
+    // //received a PRU request, need to copy data and then change pointer assignments.
+    // if (rxBuffer->header == PRU_READ || rxBuffer->header == PRU_WRITE) {
 
 
-        if (rxBuffer->header == PRU_READ)
-        {        
-            //if it is a read, need to swap the TX buffer over but the RX buffer needs to remain unchanged.
-            //feedback data will now go into the alternate buffer
-            while (baseThread->semaphore);
-                baseThread->semaphore = true;
-            //don't need to wait for the servo thread.
+    //     if (rxBuffer->header == PRU_READ)
+    //     {        
+    //         //if it is a read, need to swap the TX buffer over but the RX buffer needs to remain unchanged.
+    //         //feedback data will now go into the alternate buffer
+    //         while (baseThread->semaphore);
+    //             baseThread->semaphore = true;
+    //         //don't need to wait for the servo thread.
 
-            swapTxBuffers(&txPingPongBuffer);
+    //         swapTxBuffers(&txPingPongBuffer);
 
-            baseThread->semaphore = false;            
+    //         baseThread->semaphore = false;            
             
-            //txBuffer pointer is now directed at the 'old' data for transmission
-            txBuffer->header = PRU_DATA;
-            txlen = BUFFER_SIZE;
-            comms->dataReceived();
-        }
-        else if (rxBuffer->header == PRU_WRITE)
-        {
-            //if it is a write, then both the RX and TX buffers need to be changed.
-            while (baseThread->semaphore);
-                baseThread->semaphore = true;
-            //don't need to wait for the servo thread.
-            //feedback data will now go into the alternate buffer
-            swapTxBuffers(&txPingPongBuffer);
-            //frequency command will now come from the new data
-            swapRxBuffers(&rxPingPongBuffer);
-            baseThread->semaphore = false;               
+    //         //txBuffer pointer is now directed at the 'old' data for transmission
+    //         txBuffer->header = PRU_DATA;
+    //         txlen = BUFFER_SIZE;
+    //         comms->dataReceived();
+    //     }
+    //     else if (rxBuffer->header == PRU_WRITE)
+    //     {
+    //         //if it is a write, then both the RX and TX buffers need to be changed.
+    //         while (baseThread->semaphore);
+    //             baseThread->semaphore = true;
+    //         //don't need to wait for the servo thread.
+    //         //feedback data will now go into the alternate buffer
+    //         swapTxBuffers(&txPingPongBuffer);
+    //         //frequency command will now come from the new data
+    //         swapRxBuffers(&rxPingPongBuffer);
+    //         baseThread->semaphore = false;               
             
-            //txBuffer pointer is now directed at the 'old' data for transmission
-            txBuffer->header = PRU_ACKNOWLEDGE;
-            txlen = BUFFER_SIZE;
-            comms->dataReceived();
-        }	
-    }
+    //         //txBuffer pointer is now directed at the 'old' data for transmission
+    //         txBuffer->header = PRU_ACKNOWLEDGE;
+    //         txlen = BUFFER_SIZE;
+    //         comms->dataReceived();
+    //     }	
+    // }
    
-	// allocate pbuf from RAM
-	txBuf = pbuf_alloc(PBUF_TRANSPORT, txlen, PBUF_RAM);
+	// // allocate pbuf from RAM
+	// txBuf = pbuf_alloc(PBUF_TRANSPORT, txlen, PBUF_RAM);
 
-	// copy the data into the buffer
-	pbuf_take(txBuf, (char*)&txBuffer->txBuffer, txlen);
+	// // copy the data into the buffer
+	// pbuf_take(txBuf, (char*)&txBuffer->txBuffer, txlen);
 
-	// Connect to the remote client
-	udp_connect(upcb, addr, port);
+	// // Connect to the remote client
+	// udp_connect(upcb, addr, port);
 
-	// Send a Reply to the Client
-	udp_send(upcb, txBuf);
+	// // Send a Reply to the Client
+	// udp_send(upcb, txBuf);
 
-	// free the UDP connection, so we can accept new clients
-	udp_disconnect(upcb);
+	// // free the UDP connection, so we can accept new clients
+	// udp_disconnect(upcb);
 
-	// Free the p_tx buffer
-	pbuf_free(txBuf);
+	// // Free the p_tx buffer
+	// pbuf_free(txBuf);
 
-	// Free the p buffer
-	pbuf_free(p);
+	// // Free the p buffer
+	// pbuf_free(p);
 }
 
 void application_layer::network_initialize(wiz_NetInfo net_info)
@@ -338,7 +331,7 @@ err_t transport_layer::netif_initialize(struct netif *netif)
     return ERR_OK;
 }
 
-transport_layer::uint32_t ethernet_frame_crc(const uint8_t *data, int length)
+uint32_t transport_layer::ethernet_frame_crc(const uint8_t *data, int length)
 {
     uint32_t crc = 0xffffffff; /* Initial value. */
 
@@ -424,7 +417,7 @@ static void wizchip_read_burst(uint8_t *pBuf, uint16_t len)
 }
 
 void physical_layer::wizchip_write_burst(uint8_t *pBuf, uint16_t len)
-// {
+{
 //     uint8_t dummy_data;
 
 //     channel_config_set_read_increment(&dma_channel_config_tx, true);
@@ -449,56 +442,19 @@ void physical_layer::wizchip_write_burst(uint8_t *pBuf, uint16_t len)
 
 void physical_layer::wizchip_critical_section_lock(void)
 {
-    critical_section_enter_blocking(&g_wizchip_cri_sec);
+    while(physical_layer::spin_lock);
+
+    physical_layer::spin_lock = true;
 }
 
-physical_layer::void wizchip_critical_section_unlock(void)
+void physical_layer::wizchip_critical_section_unlock(void)
 {
-    critical_section_exit(&g_wizchip_cri_sec);
-}
-
-void physical_layer::wizchip_spi_initialize(void)
-{
-    // // this example will use SPI0 at 50MHz
-    // spi_init(SPI_PORT, 50000 * 1000);
-
-    // gpio_set_function(PIN_SCK, GPIO_FUNC_SPI);
-    // gpio_set_function(PIN_MOSI, GPIO_FUNC_SPI);
-    // gpio_set_function(PIN_MISO, GPIO_FUNC_SPI);
-
-    // // make the SPI pins available to picotool
-    // bi_decl(bi_3pins_with_func(PIN_MISO, PIN_MOSI, PIN_SCK, GPIO_FUNC_SPI));
-
-    // // chip select is active-low, so we'll initialise it to a driven-high state
-    // gpio_init(PIN_CS);
-    // gpio_set_dir(PIN_CS, GPIO_OUT);
-    // gpio_put(PIN_CS, 1);
-
-    // // make the SPI pins available to picotool
-    // bi_decl(bi_1pin_with_name(PIN_CS, "W5x00 CHIP SELECT"));
-
-    // #ifdef USE_SPI_DMA
-    //     dma_tx = dma_claim_unused_channel(true);
-    //     dma_rx = dma_claim_unused_channel(true);
-
-    //     dma_channel_config_tx = dma_channel_get_default_config(dma_tx);
-    //     channel_config_set_transfer_data_size(&dma_channel_config_tx, DMA_SIZE_8);
-    //     channel_config_set_dreq(&dma_channel_config_tx, DREQ_SPI0_TX);
-
-    //     // We set the inbound DMA to transfer from the SPI receive FIFO to a memory buffer paced by the SPI RX FIFO DREQ
-    //     // We coinfigure the read address to remain unchanged for each element, but the write
-    //     // address to increment (so data is written throughout the buffer)
-    //     dma_channel_config_rx = dma_channel_get_default_config(dma_rx);
-    //     channel_config_set_transfer_data_size(&dma_channel_config_rx, DMA_SIZE_8);
-    //     channel_config_set_dreq(&dma_channel_config_rx, DREQ_SPI0_RX);
-    //     channel_config_set_read_increment(&dma_channel_config_rx, false);
-    //     channel_config_set_write_increment(&dma_channel_config_rx, true);
-    // #endif
+    physical_layer::spin_lock = false;
 }
 
 void physical_layer::wizchip_cris_initialize(void)
 {
-    critical_section_init(&g_wizchip_cri_sec);
+    physical_layer::spin_lock = false;
     reg_wizchip_cris_cbfunc(wizchip_critical_section_lock, wizchip_critical_section_unlock);
 }
 

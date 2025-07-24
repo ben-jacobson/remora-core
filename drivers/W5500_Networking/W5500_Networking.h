@@ -8,13 +8,24 @@ This is arranged a bit like the TCP/IP model, except there's only three layers. 
 #define W5500_NETWORKING_H
 
 #include <stdio.h>
+#include <string.h>
+#include <memory>
 
-/* Application layer includes and defines */
+/* Application layer includes and defines*/
+#include "remora-hal/STM32F4_EthComms.h"
+#include "remora-hal/pin/pin.h"
 
+class STM32F4_EthComms; // forward declaration.
 
 /* Transport layer includes and defines */
+#include "lwip/init.h"
 #include "lwip/netif.h"
-#include "netif/etharp.h"
+#include "lwip/timeouts.h"
+#include "lwip/pbuf.h"
+#include "lwip/udp.h"
+#include "lwip/apps/lwiperf.h"
+#include "lwip/etharp.h"
+#include "tftpserver.h"
 
 #define ETHERNET_MTU 1500
 
@@ -30,6 +41,8 @@ This is arranged a bit like the TCP/IP model, except there's only three layers. 
 #define LWIP_UDP 1
 #define LWIP_TCP 1
 #define MEM_SIZE 2048
+#define SOCKET_MACRAW 0
+#define PORT_LWIPERF 5001
 
 // disable ACD to avoid build errors
 // http://lwip.100.n7.nabble.com/Build-issue-if-LWIP-DHCP-is-set-to-0-td33280.html
@@ -62,16 +75,22 @@ This is arranged a bit like the TCP/IP model, except there's only three layers. 
 #endif
 
 /* Physical layer includes and definitions */
-#include "ioLibrary_Driver/Ethernet/socket.h"
+#include "socket.h"
+
 
 // Application layer namespace
 namespace application_layer {
+    std::shared_ptr<STM32F4_EthComms> ptr_eth_comms;
+
+    Pin *ptr_csPin;
+    Pin *ptr_rstPin;
+        
     extern uint8_t mac[6];
     static ip_addr_t g_ip;
     static ip_addr_t g_mask;
     static ip_addr_t g_gateway;
 
-    void EthernetInit();
+    void EthernetInit(std::shared_ptr<STM32F4_EthComms>, Pin*, Pin*);
     void udpServerInit();
     void EthernetTasks();
     void udp_data_callback(void *arg, struct udp_pcb *upcb, struct pbuf *p, const ip_addr_t *addr, u16_t port);
@@ -185,7 +204,7 @@ namespace transport_layer {
 
 // Physical layer namespace
 namespace physical_layer {
-    static critical_section_t g_wizchip_cri_sec;
+    static volatile bool spin_lock = false;
 
     /**
      * ----------------------------------------------------------------------------------------------------
@@ -280,16 +299,6 @@ namespace physical_layer {
     *  Set GPIO to spi0.
     *  Puts the SPI into a known state, and enable it.
     *  Set DMA channel completion channel.
-    *
-    *  \param none
-    */
-    void wizchip_spi_initialize(void);
-
-    /*! \brief Initialize a critical section structure
-    *  \ingroup w5x00_spi
-    *
-    *  The critical section is initialized ready for use.
-    *  Registers callback function for critical section for WIZchip.
     *
     *  \param none
     */
