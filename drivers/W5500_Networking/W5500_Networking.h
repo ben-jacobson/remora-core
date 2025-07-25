@@ -1,7 +1,7 @@
 /*
-Simple namespaces for Wiznet, LWIP and TFTP functionality used in variations of Remora that rely on ethernet connectivity
 
-This is arranged a bit like the TCP/IP model, except there's only three layers. Also there's UDP in there so no need to be too strict with the analogy! 
+Encapsulating namespaces for Wiznet, LWIP and TFTP functionality used in variations of Remora that rely on ethernet connectivity
+
 */
 
 #ifndef W5500_NETWORKING_H
@@ -11,84 +11,31 @@ This is arranged a bit like the TCP/IP model, except there's only three layers. 
 #include <string.h>
 #include <memory>
 
-/* Application layer includes and defines*/
 #include "remora-hal/STM32F4_EthComms.h"
 #include "remora-hal/pin/pin.h"
+#include "remora-hal/hal_utils.h"
 
-class STM32F4_EthComms; // forward declaration.
-
-/* Transport layer includes and defines */
+#include "arch/cc.h"
 #include "lwip/init.h"
 #include "lwip/netif.h"
-#include "lwip/timeouts.h"
-#include "lwip/pbuf.h"
-#include "lwip/udp.h"
-#include "lwip/apps/lwiperf.h"
+//#include "lwip/timeouts.h"
+//#include "lwip/pbuf.h"
+//#include "lwip/udp.h"
+//#include "lwip/apps/lwiperf.h"
 #include "lwip/etharp.h"
+
 #include "tftpserver.h"
+#include "socket.h"
 
 #define ETHERNET_MTU 1500
-
-/* Prevent having to link sys_arch.c (we don't test the API layers in unit tests) */
-#define NO_SYS 1
-#define MEM_ALIGNMENT 4
-#define LWIP_RAW 1
-#define LWIP_NETCONN 0
-#define LWIP_SOCKET 0
-#define LWIP_DHCP 1
-#define LWIP_DNS 1
-#define LWIP_ICMP 1
-#define LWIP_UDP 1
-#define LWIP_TCP 1
-#define MEM_SIZE 2048
 #define SOCKET_MACRAW 0
 #define PORT_LWIPERF 5001
 
-// disable ACD to avoid build errors
-// http://lwip.100.n7.nabble.com/Build-issue-if-LWIP-DHCP-is-set-to-0-td33280.html
-#define LWIP_DHCP_DOES_ACD_CHECK 0
-
-#define ETH_PAD_SIZE 0
-#define LWIP_IP_ACCEPT_UDP_PORT(p) ((p) == PP_NTOHS(67))
-
-#define LWIP_NETIF_LINK_CALLBACK 1
-#define LWIP_NETIF_STATUS_CALLBACK 1
-
-#define TCP_MSS (1500 /*mtu*/ - 20 /*iphdr*/ - 20 /*tcphhr*/)
-#define TCP_SND_BUF (2 * TCP_MSS)
-
-#define LWIP_HTTPD_CGI 0
-#define LWIP_HTTPD_SSI 0
-#define LWIP_HTTPD_SSI_INCLUDE_TAG 0
-
-#define LWIP_RAND_WIZ() ((u32_t)rand())
-
-#if 1
-#define LWIP_DEBUG 1
-#define TCP_DEBUG LWIP_DBG_OFF
-#define ETHARP_DEBUG LWIP_DBG_OFF
-#define PBUF_DEBUG LWIP_DBG_OFF
-#define IP_DEBUG LWIP_DBG_OFF
-#define TCPIP_DEBUG LWIP_DBG_OFF
-#define DHCP_DEBUG LWIP_DBG_OFF
-#define UDP_DEBUG LWIP_DBG_OFF
-#endif
-
-/* Physical layer includes and definitions */
-#include "socket.h"
-
-
-// Application layer namespace
-namespace application_layer {
-    std::shared_ptr<STM32F4_EthComms> ptr_eth_comms;
-
-    Pin *ptr_csPin;
-    Pin *ptr_rstPin;
-        
-    extern uint8_t mac[6];
-    static ip_addr_t g_ip;
-    static ip_addr_t g_mask;
-    static ip_addr_t g_gateway;
+namespace network 
+{
+    extern std::shared_ptr<STM32F4_EthComms> ptr_eth_comms;
+    extern Pin *ptr_csPin;
+    extern Pin *ptr_rstPin;
 
     void EthernetInit(std::shared_ptr<STM32F4_EthComms>, Pin*, Pin*);
     void udpServerInit();
@@ -106,19 +53,15 @@ namespace application_layer {
     void print_network_information(wiz_NetInfo net_info);
 }
 
-// Transport layer namespace
-namespace transport_layer {
-    uint8_t mac[6] = {0x00, 0x08, 0xDC, 0x12, 0x34, 0x56};
+namespace lwip 
+{
+    extern struct netif g_netif;
 
-    static uint8_t tx_frame[1542];
-    static const uint32_t ethernet_polynomial_le = 0xedb88320U;
-
-    struct netif g_netif;
-
-    int8_t retval = 0;
-    uint8_t *pack = static_cast<uint8_t *>(malloc(ETHERNET_MTU));
-    uint16_t pack_len = 0;
-    struct pbuf *p = NULL;    
+    extern uint8_t mac[6];
+    extern int8_t retval;
+    extern uint8_t *pack;
+    extern uint16_t pack_len;
+    extern struct pbuf *p;    
 
     /**
      * ----------------------------------------------------------------------------------------------------
@@ -202,10 +145,8 @@ namespace transport_layer {
     static uint32_t ethernet_frame_crc(const uint8_t *data, int length);
 }
 
-// Physical layer namespace
-namespace physical_layer {
-    static volatile bool spin_lock = false;
-
+namespace wiznet 
+{
     /**
      * ----------------------------------------------------------------------------------------------------
      * Functions
@@ -239,7 +180,7 @@ namespace physical_layer {
     *
     *  \param none
     */
-    static uint8_t wizchip_read(void);
+    //static uint8_t wizchip_read(void);
 
     /*! \brief Write to an SPI device, blocking
     *  \ingroup w5x00_spi
@@ -250,7 +191,7 @@ namespace physical_layer {
     *
     *  \param tx_data Buffer of data to write
     */
-    static void wizchip_write(uint8_t tx_data);
+    //static void wizchip_write(uint8_t tx_data);
 
     /*! \brief Configure all DMA parameters and optionally start transfer
     *  \ingroup w5x00_spi
@@ -260,27 +201,27 @@ namespace physical_layer {
     *  \param pBuf Buffer of data to read
     *  \param len element count (each element is of size transfer_data_size)
     */
-    static void wizchip_read_burst(uint8_t *pBuf, uint16_t len);
+    // static void wizchip_read_burst(uint8_t *pBuf, uint16_t len);
 
-    /*! \brief Configure all DMA parameters and optionally start transfer
-    *  \ingroup w5x00_spi
-    *
-    *  Configure all DMA parameters and write to DMA
-    *
-    *  \param pBuf Buffer of data to write
-    *  \param len element count (each element is of size transfer_data_size)
-    */
-    static void wizchip_write_burst(uint8_t *pBuf, uint16_t len);
+    // /*! \brief Configure all DMA parameters and optionally start transfer
+    // *  \ingroup w5x00_spi
+    // *
+    // *  Configure all DMA parameters and write to DMA
+    // *
+    // *  \param pBuf Buffer of data to write
+    // *  \param len element count (each element is of size transfer_data_size)
+    // */
+    // static void wizchip_write_burst(uint8_t *pBuf, uint16_t len);
 
-    /*! \brief Enter a critical section
-    *  \ingroup w5x00_spi
-    *
-    *  Set ciritical section enter blocking function.
-    *  If the spin lock associated with this critical section is in use, then this
-    *  method will block until it is released.
-    *
-    *  \param none
-    */
+    // /*! \brief Enter a critical section
+    // *  \ingroup w5x00_spi
+    // *
+    // *  Set ciritical section enter blocking function.
+    // *  If the spin lock associated with this critical section is in use, then this
+    // *  method will block until it is released.
+    // *
+    // *  \param none
+    // */
     static void wizchip_critical_section_lock(void);
 
     /*! \brief Release a critical section
@@ -341,7 +282,6 @@ namespace physical_layer {
     *
     *  \param net_info network information.
     */
-
 }
 
 #endif

@@ -1,5 +1,4 @@
 #include "W5500_Networking.h"
-#include "remora-hal/STM32F4_EthComms.h" // replace with your hardware specific EthComms implementation
 
 /**
  * Copyright (c) 2022 WIZnet Co.,Ltd
@@ -7,519 +6,543 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-void application_layer::EthernetInit(std::shared_ptr<STM32F4_EthComms> ptr_eth_comms, Pin *ptr_csPin, Pin *ptr_rstPin)
+namespace network 
 {
-    physical_layer::wizchip_cris_initialize();
+    std::shared_ptr<STM32F4_EthComms> ptr_eth_comms;
+    Pin *ptr_csPin = nullptr;
+    Pin *ptr_rstPin = nullptr;
+            
+    static ip_addr_t g_ip;
+    static ip_addr_t g_mask;
+    static ip_addr_t g_gateway;
 
-    physical_layer::wizchip_reset();
-    physical_layer::wizchip_initialize();
-    physical_layer::wizchip_check();
-
-    // Set ethernet chip MAC address
-    setSHAR(mac);
-    ctlwizchip(CW_RESET_PHY, 0);
-
-    // Initialize LWIP in NO_SYS mode
-    lwip_init();
-
-    netif_add(&transport_layer::g_netif, &g_ip, &g_mask, &g_gateway, NULL, transport_layer::netif_initialize, netif_input);
-    transport_layer::g_netif.name[0] = 'e';
-    transport_layer::g_netif.name[1] = '0';
-
-    // Assign callbacks for link and status
-    netif_set_link_callback(&transport_layer::g_netif, transport_layer::netif_link_callback);
-    netif_set_status_callback(&transport_layer::g_netif, transport_layer::netif_status_callback);
-
-    // MACRAW socket open
-    transport_layer::retval = socket(SOCKET_MACRAW, Sn_MR_MACRAW, PORT_LWIPERF, 0x00);
-
-    if (transport_layer::retval < 0)
+    void EthernetInit(std::shared_ptr<STM32F4_EthComms> ptr_eth_comms, Pin *ptr_csPin, Pin *ptr_rstPin)
     {
-        printf(" MACRAW socket open failed\n");
+        wiznet::wizchip_cris_initialize();
+
+        wiznet::wizchip_reset();
+        wiznet::wizchip_initialize();
+        wiznet::wizchip_check();
+
+        // Set ethernet chip MAC address
+        setSHAR(lwip::mac);
+        ctlwizchip(CW_RESET_PHY, 0);
+
+        // Initialize LWIP in NO_SYS mode
+        lwip_init();
+
+        netif_add(
+                &lwip::g_netif, 
+                &network::g_ip, 
+                &network::g_mask, 
+                &network::g_gateway, 
+                NULL, 
+                lwip::netif_initialize, 
+                netif_input);
+
+        lwip::g_netif.name[0] = 'e';
+        lwip::g_netif.name[1] = '0';
+
+        // Assign callbacks for link and status
+        netif_set_link_callback(&lwip::g_netif, lwip::netif_link_callback);
+        netif_set_status_callback(&lwip::g_netif, lwip::netif_status_callback);
+
+        // MACRAW socket open
+        lwip::retval = socket(SOCKET_MACRAW, Sn_MR_MACRAW, PORT_LWIPERF, 0x00);
+
+        if (lwip::retval < 0)
+        {
+            printf(" MACRAW socket open failed\n");
+        }
+
+        // Set the default interface and bring it up
+        netif_set_link_up(&lwip::g_netif);
+        netif_set_up(&lwip::g_netif);
     }
 
-    // Set the default interface and bring it up
-    netif_set_link_up(&transport_layer::g_netif);
-    netif_set_up(&transport_layer::g_netif);
-}
 
-
-void application_layer::EthernetTasks()
-{
-    getsockopt(SOCKET_MACRAW, SO_RECVBUF, &transport_layer::pack_len);
-
-    if (transport_layer::pack_len > 0)
+    void EthernetTasks()
     {
-        transport_layer::pack_len = transport_layer::recv_lwip(SOCKET_MACRAW, (uint8_t *)transport_layer::pack, transport_layer::pack_len);
+        getsockopt(SOCKET_MACRAW, SO_RECVBUF, &lwip::pack_len);
 
-        if (transport_layer::pack_len)
+        if (lwip::pack_len > 0)
         {
-            transport_layer::p = pbuf_alloc(PBUF_RAW, transport_layer::pack_len, PBUF_POOL);
-            pbuf_take(transport_layer::p, transport_layer::pack, transport_layer::pack_len);
-            free(transport_layer::pack);
+            lwip::pack_len = lwip::recv_lwip(SOCKET_MACRAW, (uint8_t *)lwip::pack, lwip::pack_len);
 
-            transport_layer::pack = static_cast<uint8_t *>(malloc(ETHERNET_MTU));
-        }
-        else
-        {
-            printf(" No packet received\n");
-        }
-
-        if (transport_layer::pack_len && transport_layer::p != NULL)
-        {
-            LINK_STATS_INC(link.recv);
-
-            if (transport_layer::g_netif.input(transport_layer::p, &transport_layer::g_netif) != ERR_OK)
+            if (lwip::pack_len)
             {
-                pbuf_free(transport_layer::p);
+                lwip::p = pbuf_alloc(PBUF_RAW, lwip::pack_len, PBUF_POOL);
+                pbuf_take(lwip::p, lwip::pack, lwip::pack_len);
+                free(lwip::pack);
+
+                lwip::pack = static_cast<uint8_t *>(malloc(ETHERNET_MTU));
+            }
+            else
+            {
+                printf(" No packet received\n");
+            }
+
+            if (lwip::pack_len && lwip::p != NULL)
+            {
+                LINK_STATS_INC(link.recv);
+
+                if (lwip::g_netif.input(lwip::p, &lwip::g_netif) != ERR_OK)
+                {
+                    pbuf_free(lwip::p);
+                }
             }
         }
     }
-}
 
-
-void application_layer::udpServerInit(void)
-{
-   struct udp_pcb *upcb;
-   err_t err;
-
-   // UDP control block for data
-   upcb = udp_new();
-   err = udp_bind(upcb, &g_ip, 27181);  // 27181 is the server UDP port
-
-   /* 3. Set a receive callback for the upcb */
-   if(err == ERR_OK)
-   {
-	   udp_recv(upcb, udp_data_callback, NULL);
-   }
-   else
-   {
-	   udp_remove(upcb);
-   }
-}
-
-
-void application_layer::udp_data_callback(void *arg, struct udp_pcb *upcb, struct pbuf *p, const ip_addr_t *addr, u16_t port)
-{
-	// int txlen = 0;
-    // int n;
-	// struct pbuf *txBuf;
-    // uint32_t status;
-
-    // //received data from host needs to go into the inactive buffer
-    // rxData_t* rxBuffer = getAltRxBuffer(&rxPingPongBuffer);
-    // //data sent to host needs to come from the active buffer
-    // txData_t* txBuffer = getCurrentTxBuffer(&txPingPongBuffer);
-
-	// memcpy(&rxBuffer->rxBuffer, p->payload, p->len);
-
-    // //received a PRU request, need to copy data and then change pointer assignments.
-    // if (rxBuffer->header == PRU_READ || rxBuffer->header == PRU_WRITE) {
-
-
-    //     if (rxBuffer->header == PRU_READ)
-    //     {        
-    //         //if it is a read, need to swap the TX buffer over but the RX buffer needs to remain unchanged.
-    //         //feedback data will now go into the alternate buffer
-    //         while (baseThread->semaphore);
-    //             baseThread->semaphore = true;
-    //         //don't need to wait for the servo thread.
-
-    //         swapTxBuffers(&txPingPongBuffer);
-
-    //         baseThread->semaphore = false;            
-            
-    //         //txBuffer pointer is now directed at the 'old' data for transmission
-    //         txBuffer->header = PRU_DATA;
-    //         txlen = BUFFER_SIZE;
-    //         comms->dataReceived();
-    //     }
-    //     else if (rxBuffer->header == PRU_WRITE)
-    //     {
-    //         //if it is a write, then both the RX and TX buffers need to be changed.
-    //         while (baseThread->semaphore);
-    //             baseThread->semaphore = true;
-    //         //don't need to wait for the servo thread.
-    //         //feedback data will now go into the alternate buffer
-    //         swapTxBuffers(&txPingPongBuffer);
-    //         //frequency command will now come from the new data
-    //         swapRxBuffers(&rxPingPongBuffer);
-    //         baseThread->semaphore = false;               
-            
-    //         //txBuffer pointer is now directed at the 'old' data for transmission
-    //         txBuffer->header = PRU_ACKNOWLEDGE;
-    //         txlen = BUFFER_SIZE;
-    //         comms->dataReceived();
-    //     }	
-    // }
-   
-	// // allocate pbuf from RAM
-	// txBuf = pbuf_alloc(PBUF_TRANSPORT, txlen, PBUF_RAM);
-
-	// // copy the data into the buffer
-	// pbuf_take(txBuf, (char*)&txBuffer->txBuffer, txlen);
-
-	// // Connect to the remote client
-	// udp_connect(upcb, addr, port);
-
-	// // Send a Reply to the Client
-	// udp_send(upcb, txBuf);
-
-	// // free the UDP connection, so we can accept new clients
-	// udp_disconnect(upcb);
-
-	// // Free the p_tx buffer
-	// pbuf_free(txBuf);
-
-	// // Free the p buffer
-	// pbuf_free(p);
-}
-
-void application_layer::network_initialize(wiz_NetInfo net_info)
-{
-    ctlnetwork(CN_SET_NETINFO, (void *)&net_info);
-}
-
-void application_layer::print_network_information(wiz_NetInfo net_info)
-{
-    uint8_t tmp_str[8] = {
-        0,
-    };
-
-    ctlnetwork(CN_GET_NETINFO, (void *)&net_info);
-    ctlwizchip(CW_GET_ID, (void *)tmp_str);
-
-    if (net_info.dhcp == NETINFO_DHCP)
+    void udpServerInit(void)
     {
-        printf("====================================================================================================\n");
-        printf(" %s network configuration : DHCP\n\n", (char *)tmp_str);
+    struct udp_pcb *upcb;
+    err_t err;
+
+    // UDP control block for data
+    upcb = udp_new();
+    err = udp_bind(upcb, &g_ip, 27181);  // 27181 is the server UDP port
+
+    /* 3. Set a receive callback for the upcb */
+    if(err == ERR_OK)
+    {
+        udp_recv(upcb, udp_data_callback, NULL);
     }
     else
     {
-        printf("====================================================================================================\n");
-        printf(" %s network configuration : static\n\n", (char *)tmp_str);
+        udp_remove(upcb);
+    }
     }
 
-    printf(" MAC         : %02X:%02X:%02X:%02X:%02X:%02X\n", net_info.mac[0], net_info.mac[1], net_info.mac[2], net_info.mac[3], net_info.mac[4], net_info.mac[5]);
-    printf(" IP          : %d.%d.%d.%d\n", net_info.ip[0], net_info.ip[1], net_info.ip[2], net_info.ip[3]);
-    printf(" Subnet Mask : %d.%d.%d.%d\n", net_info.sn[0], net_info.sn[1], net_info.sn[2], net_info.sn[3]);
-    printf(" Gateway     : %d.%d.%d.%d\n", net_info.gw[0], net_info.gw[1], net_info.gw[2], net_info.gw[3]);
-    printf(" DNS         : %d.%d.%d.%d\n", net_info.dns[0], net_info.dns[1], net_info.dns[2], net_info.dns[3]);
-    printf("====================================================================================================\n\n");
-}
-
-
-int32_t transport_layer::send_lwip(uint8_t sn, uint8_t *buf, uint16_t len)
-{
-    uint8_t tmp = 0;
-    uint16_t freesize = 0;
-
-    tmp = getSn_SR(sn);
-
-    freesize = getSn_TxMAX(sn);
-    if (len > freesize)
-        len = freesize; // check size not to exceed MAX size.
-
-    wiz_send_data(sn, buf, len);
-    setSn_CR(sn, Sn_CR_SEND);
-    while (getSn_CR(sn))
-        ;
-
-    while (1)
+    void udp_data_callback(void *arg, struct udp_pcb *upcb, struct pbuf *p, const ip_addr_t *addr, u16_t port)
     {
-        uint8_t IRtemp = getSn_IR(sn);
-        if (IRtemp & Sn_IR_SENDOK)
-        {
-            setSn_IR(sn, Sn_IR_SENDOK);
-            // printf("Packet sent ok\n");
-            break;
-        }
-        else if (IRtemp & Sn_IR_TIMEOUT)
-        {
-            setSn_IR(sn, Sn_IR_TIMEOUT);
-            // printf("Socket is closed\n");
-            //  There was a timeout
-            return -1;
-        }
+        int txlen = 0;
+        int n;
+        struct pbuf *txBuf;
+        uint32_t status;
+
+        // //received data from host needs to go into the inactive buffer
+        // rxData_t* rxBuffer = getAltRxBuffer(&rxPingPongBuffer);
+        // //data sent to host needs to come from the active buffer
+        // txData_t* txBuffer = getCurrentTxBuffer(&txPingPongBuffer);
+
+        // memcpy(&rxBuffer->rxBuffer, p->payload, p->len);
+
+        // //received a PRU request, need to copy data and then change pointer assignments.
+        // if (rxBuffer->header == Config::pruRead || rxBuffer->header == Config::pruWrite) {
+        //     if (rxBuffer->header == Config::pruRead)
+        //     {        
+        //         //if it is a read, need to swap the TX buffer over but the RX buffer needs to remain unchanged.
+        //         //feedback data will now go into the alternate buffer
+        //         while (baseThread->semaphore);
+        //             baseThread->semaphore = true;
+        //         //don't need to wait for the servo thread.
+
+        //         swapTxBuffers(&txPingPongBuffer);
+
+        //         baseThread->semaphore = false;            
+                
+        //         //txBuffer pointer is now directed at the 'old' data for transmission
+        //         txBuffer->header = Config::pruData;
+        //         txlen = Config::dataBuffSize + 4; // to check, why the extra 4 bytes? 
+        //         comms->dataReceived();
+        //     }
+        //     else if (rxBuffer->header == Config::pruWrite)
+        //     {
+        //         //if it is a write, then both the RX and TX buffers need to be changed.
+        //         while (baseThread->semaphore);
+        //             baseThread->semaphore = true;
+        //         //don't need to wait for the servo thread.
+        //         //feedback data will now go into the alternate buffer
+        //         swapTxBuffers(&txPingPongBuffer);
+        //         //frequency command will now come from the new data
+        //         swapRxBuffers(&rxPingPongBuffer);
+        //         baseThread->semaphore = false;               
+                
+        //         //txBuffer pointer is now directed at the 'old' data for transmission
+        //         txBuffer->header = config::pruAcknowledge;
+        //         txlen = Config::dataBuffSize + 4;   
+        //         comms->dataReceived();
+        //     }	
+        // }
+    
+        // allocate pbuf from RAM
+        // txBuf = pbuf_alloc(PBUF_TRANSPORT, txlen, PBUF_RAM);
+
+        // // copy the data into the buffer
+        // pbuf_take(txBuf, (char*)&txBuffer->txBuffer, txlen);
+
+        // // Connect to the remote client
+        // udp_connect(upcb, addr, port);
+
+        // // Send a Reply to the Client
+        // udp_send(upcb, txBuf);
+
+        // // free the UDP connection, so we can accept new clients
+        // udp_disconnect(upcb);
+
+        // // Free the p_tx buffer
+        // pbuf_free(txBuf);
+
+        // // Free the p buffer
+        // pbuf_free(p);
     }
 
-    return (int32_t)len;
+    void network_initialize(wiz_NetInfo net_info)
+    {
+        ctlnetwork(CN_SET_NETINFO, (void *)&net_info);
+    }
+
+    void print_network_information(wiz_NetInfo net_info)
+    {
+        uint8_t tmp_str[8] = {
+            0,
+        };
+
+        ctlnetwork(CN_GET_NETINFO, (void *)&net_info);
+        ctlwizchip(CW_GET_ID, (void *)tmp_str);
+
+        if (net_info.dhcp == NETINFO_DHCP)
+        {
+            printf("====================================================================================================\n");
+            printf(" %s network configuration : DHCP\n\n", (char *)tmp_str);
+        }
+        else
+        {
+            printf("====================================================================================================\n");
+            printf(" %s network configuration : static\n\n", (char *)tmp_str);
+        }
+
+        printf(" MAC         : %02X:%02X:%02X:%02X:%02X:%02X\n", net_info.mac[0], net_info.mac[1], net_info.mac[2], net_info.mac[3], net_info.mac[4], net_info.mac[5]);
+        printf(" IP          : %d.%d.%d.%d\n", net_info.ip[0], net_info.ip[1], net_info.ip[2], net_info.ip[3]);
+        printf(" Subnet Mask : %d.%d.%d.%d\n", net_info.sn[0], net_info.sn[1], net_info.sn[2], net_info.sn[3]);
+        printf(" Gateway     : %d.%d.%d.%d\n", net_info.gw[0], net_info.gw[1], net_info.gw[2], net_info.gw[3]);
+        printf(" DNS         : %d.%d.%d.%d\n", net_info.dns[0], net_info.dns[1], net_info.dns[2], net_info.dns[3]);
+        printf("====================================================================================================\n\n");
+    }
 }
 
-int32_t transport_layer::recv_lwip(uint8_t sn, uint8_t *buf, uint16_t len)
+namespace lwip 
 {
-    uint8_t head[2];
+    struct netif g_netif;
+
+    uint8_t mac[6] = {0x00, 0x08, 0xDC, 0x12, 0x34, 0x56};
+    int8_t retval = 0;
+    uint8_t *pack = static_cast<uint8_t *>(malloc(ETHERNET_MTU));
     uint16_t pack_len = 0;
+    struct pbuf *p = NULL;    
 
-    pack_len = getSn_RX_RSR(sn);
+    static uint8_t tx_frame[1542];
+    static const uint32_t ethernet_polynomial_le = 0xedb88320U;
 
-    if (pack_len > 0)
+    int32_t send_lwip(uint8_t sn, uint8_t *buf, uint16_t len)
     {
-        wiz_recv_data(sn, head, 2);
-        setSn_CR(sn, Sn_CR_RECV);
+        uint16_t freesize = 0;
+        //uint8_t tmp = getSn_SR(sn);
+        getSn_SR(sn);
 
-        // byte size of data packet (2byte)
-        pack_len = head[0];
-        pack_len = (pack_len << 8) + head[1];
-        pack_len -= 2;
+        freesize = getSn_TxMAX(sn);
+        if (len > freesize)
+            len = freesize; // check size not to exceed MAX size.
 
-        if (pack_len > len)
+        wiz_send_data(sn, buf, len);
+        setSn_CR(sn, Sn_CR_SEND);
+        while (getSn_CR(sn))
+            ;
+
+        while (1)
         {
-            // Packet is bigger than buffer - drop the packet
-            wiz_recv_ignore(sn, pack_len);
-            setSn_CR(sn, Sn_CR_RECV);
-            return 0;
-        }
-
-        wiz_recv_data(sn, buf, pack_len); // data copy
-        setSn_CR(sn, Sn_CR_RECV);
-    }
-
-    return (int32_t)pack_len;
-}
-
-err_t transport_layer::netif_output(struct netif *netif, struct pbuf *p)
-{
-    uint32_t send_len = 0;
-    uint32_t tot_len = 0;
-
-    memset(tx_frame, 0x00, sizeof(tx_frame));
-
-    for (struct pbuf *q = p; q != NULL; q = q->next)
-    {
-        memcpy(tx_frame + tot_len, q->payload, q->len);
-
-        tot_len += q->len;
-
-        if (q->len == q->tot_len)
-        {
-            break;
-        }
-    }
-
-    if (tot_len < 60)
-    {
-        // pad
-        tot_len = 60;
-    }
-
-    uint32_t crc = ethernet_frame_crc(tx_frame, tot_len);
-
-    send_len = send_lwip(0, tx_frame, tot_len);
-
-    return ERR_OK;
-}
-
-void transport_layer::netif_link_callback(struct netif *netif)
-{
-    printf("netif link status changed %s\n", netif_is_link_up(netif) ? "up" : "down");
-}
-
-void transport_layer::netif_status_callback(struct netif *netif)
-{
-    printf("netif status changed %s\n", ip4addr_ntoa(netif_ip4_addr(netif)));
-}
-
-err_t transport_layer::netif_initialize(struct netif *netif)
-{
-    netif->linkoutput = netif_output;
-    netif->output = etharp_output;
-    netif->mtu = ETHERNET_MTU;
-    netif->flags = NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_ETHERNET | NETIF_FLAG_IGMP | NETIF_FLAG_MLD6;
-    SMEMCPY(netif->hwaddr, mac, sizeof(netif->hwaddr));
-    netif->hwaddr_len = sizeof(netif->hwaddr);
-    return ERR_OK;
-}
-
-uint32_t transport_layer::ethernet_frame_crc(const uint8_t *data, int length)
-{
-    uint32_t crc = 0xffffffff; /* Initial value. */
-
-    while (--length >= 0)
-    {
-        uint8_t current_octet = *data++;
-
-        for (int bit = 8; --bit >= 0; current_octet >>= 1)
-        {
-            if ((crc ^ current_octet) & 1)
+            uint8_t IRtemp = getSn_IR(sn);
+            if (IRtemp & Sn_IR_SENDOK)
             {
-                crc >>= 1;
-                crc ^= ethernet_polynomial_le;
+                setSn_IR(sn, Sn_IR_SENDOK);
+                // printf("Packet sent ok\n");
+                break;
             }
-            else
-                crc >>= 1;
+            else if (IRtemp & Sn_IR_TIMEOUT)
+            {
+                setSn_IR(sn, Sn_IR_TIMEOUT);
+                // printf("Socket is closed\n");
+                //  There was a timeout
+                return -1;
+            }
         }
+
+        return (int32_t)len;
     }
 
-    return ~crc;
+    int32_t recv_lwip(uint8_t sn, uint8_t *buf, uint16_t len)
+    {
+        uint8_t head[2];
+        uint16_t pack_len = 0;
+
+        pack_len = getSn_RX_RSR(sn);
+
+        if (pack_len > 0)
+        {
+            wiz_recv_data(sn, head, 2);
+            setSn_CR(sn, Sn_CR_RECV);
+
+            // byte size of data packet (2byte)
+            pack_len = head[0];
+            pack_len = (pack_len << 8) + head[1];
+            pack_len -= 2;
+
+            if (pack_len > len)
+            {
+                // Packet is bigger than buffer - drop the packet
+                wiz_recv_ignore(sn, pack_len);
+                setSn_CR(sn, Sn_CR_RECV);
+                return 0;
+            }
+
+            wiz_recv_data(sn, buf, pack_len); // data copy
+            setSn_CR(sn, Sn_CR_RECV);
+        }
+
+        return (int32_t)pack_len;
+    }
+
+    err_t netif_output(struct netif *netif, struct pbuf *p)
+    {
+        uint32_t tot_len = 0;
+
+        memset(tx_frame, 0x00, sizeof(tx_frame));
+
+        for (struct pbuf *q = p; q != NULL; q = q->next)
+        {
+            memcpy(tx_frame + tot_len, q->payload, q->len);
+
+            tot_len += q->len;
+
+            if (q->len == q->tot_len)
+            {
+                break;
+            }
+        }
+
+        if (tot_len < 60)
+        {
+            // pad
+            tot_len = 60;
+        }
+
+        //uint32_t crc = ethernet_frame_crc(tx_frame, tot_len); // unused? 
+
+        //uint32_t send_len = send_lwip(0, tx_frame, tot_len);
+        send_lwip(0, tx_frame, tot_len);
+
+        return ERR_OK;
+    }
+
+    void netif_link_callback(struct netif *netif)
+    {
+        printf("netif link status changed %s\n", netif_is_link_up(netif) ? "up" : "down");
+    }
+
+    void netif_status_callback(struct netif *netif)
+    {
+        printf("netif status changed %s\n", ip4addr_ntoa(netif_ip4_addr(netif)));
+    }
+
+    err_t netif_initialize(struct netif *netif)
+    {
+        netif->linkoutput = netif_output;
+        netif->output = etharp_output;
+        netif->mtu = ETHERNET_MTU;
+        netif->flags = NETIF_FLAG_BROADCAST | NETIF_FLAG_ETHARP | NETIF_FLAG_ETHERNET | NETIF_FLAG_IGMP | NETIF_FLAG_MLD6;
+        SMEMCPY(netif->hwaddr, lwip::mac, sizeof(netif->hwaddr));
+        netif->hwaddr_len = sizeof(netif->hwaddr);
+        return ERR_OK;
+    }
+
+    uint32_t ethernet_frame_crc(const uint8_t *data, int length)
+    {
+        uint32_t crc = 0xffffffff; /* Initial value. */
+
+        while (--length >= 0)
+        {
+            uint8_t current_octet = *data++;
+
+            for (int bit = 8; --bit >= 0; current_octet >>= 1)
+            {
+                if ((crc ^ current_octet) & 1)
+                {
+                    crc >>= 1;
+                    crc ^= lwip::ethernet_polynomial_le;
+                }
+                else
+                    crc >>= 1;
+            }
+        }
+
+        return ~crc;
+    }
 }
 
-inline void physical_layer::wizchip_select(void)
+namespace wiznet 
 {
-    //gpio_put(PIN_CS, 0);
-}
+    static volatile bool spin_lock = false;
 
-inline void physical_layer::wizchip_deselect(void)
-{
-    //gpio_put(PIN_CS, 1);
-}
+    inline void wizchip_select(void)
+    {
+        network::ptr_csPin->set(false);
+    }
 
-void physical_layer::wizchip_reset()
-{
-    // gpio_set_dir(PIN_RST, GPIO_OUT);
+    inline void wizchip_deselect(void)
+    {
+        network::ptr_csPin->set(true);
 
-    // gpio_put(PIN_RST, 0);
-    // sleep_ms(100);
+    }
 
-    // gpio_put(PIN_RST, 1);
-    // sleep_ms(100);
+    void wizchip_reset()
+    {
+        network::ptr_rstPin->set(LOW);
+        delay_ms(100);
+        network::ptr_rstPin->set(HIGH);
+        delay_ms(100);
+    }
 
-    // bi_decl(bi_1pin_with_name(PIN_RST, "W5x00 RESET"));
-}
+    // uint8_t physical_layer::wizchip_read(void)
+    // {
+    //     uint8_t rx_data = 0;
+    //     uint8_t tx_data = 0xFF;
 
-uint8_t physical_layer::wizchip_read(void)
-{
-    uint8_t rx_data = 0;
-    uint8_t tx_data = 0xFF;
+    //     //spi_read_blocking(SPI_PORT, tx_data, &rx_data, 1);
 
-    //spi_read_blocking(SPI_PORT, tx_data, &rx_data, 1);
+    //     return rx_data;
+    // }
 
-    return rx_data;
-}
+    // void physical_layer::wizchip_write(uint8_t tx_data)
+    // {
+    //     //spi_write_blocking(SPI_PORT, &tx_data, 1);
+    // }
 
-void physical_layer::wizchip_write(uint8_t tx_data)
-{
-    //spi_write_blocking(SPI_PORT, &tx_data, 1);
-}
+    //static void wizchip_read_burst(uint8_t *pBuf, uint16_t len)
+    //{
+    //     uint8_t dummy_data = 0xFF;
 
-static void wizchip_read_burst(uint8_t *pBuf, uint16_t len)
-{
-//     uint8_t dummy_data = 0xFF;
+    //     channel_config_set_read_increment(&dma_channel_config_tx, false);
+    //     channel_config_set_write_increment(&dma_channel_config_tx, false);
+    //     dma_channel_configure(dma_tx, &dma_channel_config_tx,
+    //                           &spi_get_hw(SPI_PORT)->dr, // write address
+    //                           &dummy_data,               // read address
+    //                           len,                       // element count (each element is of size transfer_data_size)
+    //                           false);                    // don't start yet
 
-//     channel_config_set_read_increment(&dma_channel_config_tx, false);
-//     channel_config_set_write_increment(&dma_channel_config_tx, false);
-//     dma_channel_configure(dma_tx, &dma_channel_config_tx,
-//                           &spi_get_hw(SPI_PORT)->dr, // write address
-//                           &dummy_data,               // read address
-//                           len,                       // element count (each element is of size transfer_data_size)
-//                           false);                    // don't start yet
+    //     channel_config_set_read_increment(&dma_channel_config_rx, false);
+    //     channel_config_set_write_increment(&dma_channel_config_rx, true);
+    //     dma_channel_configure(dma_rx, &dma_channel_config_rx,
+    //                           pBuf,                      // write address
+    //                           &spi_get_hw(SPI_PORT)->dr, // read address
+    //                           len,                       // element count (each element is of size transfer_data_size)
+    //                           false);                    // don't start yet
 
-//     channel_config_set_read_increment(&dma_channel_config_rx, false);
-//     channel_config_set_write_increment(&dma_channel_config_rx, true);
-//     dma_channel_configure(dma_rx, &dma_channel_config_rx,
-//                           pBuf,                      // write address
-//                           &spi_get_hw(SPI_PORT)->dr, // read address
-//                           len,                       // element count (each element is of size transfer_data_size)
-//                           false);                    // don't start yet
+    //     dma_start_channel_mask((1u << dma_tx) | (1u << dma_rx));
+    //     dma_channel_wait_for_finish_blocking(dma_rx);
+    //}
 
-//     dma_start_channel_mask((1u << dma_tx) | (1u << dma_rx));
-//     dma_channel_wait_for_finish_blocking(dma_rx);
-}
+    //void physical_layer::wizchip_write_burst(uint8_t *pBuf, uint16_t len)
+    //{
+    //     uint8_t dummy_data;
 
-void physical_layer::wizchip_write_burst(uint8_t *pBuf, uint16_t len)
-{
-//     uint8_t dummy_data;
+    //     channel_config_set_read_increment(&dma_channel_config_tx, true);
+    //     channel_config_set_write_increment(&dma_channel_config_tx, false);
+    //     dma_channel_configure(dma_tx, &dma_channel_config_tx,
+    //                           &spi_get_hw(SPI_PORT)->dr, // write address
+    //                           pBuf,                      // read address
+    //                           len,                       // element count (each element is of size transfer_data_size)
+    //                           false);                    // don't start yet
 
-//     channel_config_set_read_increment(&dma_channel_config_tx, true);
-//     channel_config_set_write_increment(&dma_channel_config_tx, false);
-//     dma_channel_configure(dma_tx, &dma_channel_config_tx,
-//                           &spi_get_hw(SPI_PORT)->dr, // write address
-//                           pBuf,                      // read address
-//                           len,                       // element count (each element is of size transfer_data_size)
-//                           false);                    // don't start yet
+    //     channel_config_set_read_increment(&dma_channel_config_rx, false);
+    //     channel_config_set_write_increment(&dma_channel_config_rx, false);
+    //     dma_channel_configure(dma_rx, &dma_channel_config_rx,
+    //                           &dummy_data,               // write address
+    //                           &spi_get_hw(SPI_PORT)->dr, // read address
+    //                           len,                       // element count (each element is of size transfer_data_size)
+    //                           false);                    // don't start yet
 
-//     channel_config_set_read_increment(&dma_channel_config_rx, false);
-//     channel_config_set_write_increment(&dma_channel_config_rx, false);
-//     dma_channel_configure(dma_rx, &dma_channel_config_rx,
-//                           &dummy_data,               // write address
-//                           &spi_get_hw(SPI_PORT)->dr, // read address
-//                           len,                       // element count (each element is of size transfer_data_size)
-//                           false);                    // don't start yet
+    //     dma_start_channel_mask((1u << dma_tx) | (1u << dma_rx));
+    //     dma_channel_wait_for_finish_blocking(dma_rx);
+    //}
 
-//     dma_start_channel_mask((1u << dma_tx) | (1u << dma_rx));
-//     dma_channel_wait_for_finish_blocking(dma_rx);
-}
+    void wizchip_critical_section_lock(void)
+    {
+        while(wiznet::spin_lock);
 
-void physical_layer::wizchip_critical_section_lock(void)
-{
-    while(physical_layer::spin_lock);
+        wiznet::spin_lock = true;
+    }
 
-    physical_layer::spin_lock = true;
-}
+    void wizchip_critical_section_unlock(void)
+    {
+        wiznet::spin_lock = false;
+    }
 
-void physical_layer::wizchip_critical_section_unlock(void)
-{
-    physical_layer::spin_lock = false;
-}
+    void wizchip_cris_initialize(void)
+    {
+        wiznet::spin_lock = false;
+        reg_wizchip_cris_cbfunc(wizchip_critical_section_lock, wizchip_critical_section_unlock);
+    }
 
-void physical_layer::wizchip_cris_initialize(void)
-{
-    physical_layer::spin_lock = false;
-    reg_wizchip_cris_cbfunc(wizchip_critical_section_lock, wizchip_critical_section_unlock);
-}
+    void wizchip_initialize(void)
+    {
+        /* Deselect the FLASH : chip select high */
+        wizchip_deselect();
 
-void physical_layer::wizchip_initialize(void)
-{
-    /* Deselect the FLASH : chip select high */
-    wizchip_deselect();
+        /* Call back function register for wizchip CS pin */
+        reg_wizchip_cs_cbfunc(wizchip_select, wizchip_deselect);
 
-    /* CS function register */
-    reg_wizchip_cs_cbfunc(wizchip_select, wizchip_deselect);
-
-    /* SPI function register */
-    reg_wizchip_spi_cbfunc(wizchip_read, wizchip_write);
-    #ifdef USE_SPI_DMA
-        reg_wizchip_spiburst_cbfunc(wizchip_read_burst, wizchip_write_burst);
-    #endif
+        // Set up our callback functions for the Wiznet to trigger SPI read and write from the HAL class
+        // reg_wizchip_spi_cbfunc(application_layer::ptr_eth_comms->spi_get_byte, application_layer::ptr_eth_comms->spi_put_byte); // for individual SPI bytes only
+        reg_wizchip_spiburst_cbfunc(network::ptr_eth_comms->spi_read, network::ptr_eth_comms->spi_write); // seems the burst function plays better with DMA?
 
         /* W5x00 initialize */
         uint8_t temp;
-    #if (_WIZCHIP_ == W5100S)
-        uint8_t memsize[2][4] = {{8, 0, 0, 0}, {8, 0, 0, 0}};
-    #elif (_WIZCHIP_ == W5500)
-        uint8_t memsize[2][8] = {{8, 0, 0, 0, 0, 0, 0, 0}, {8, 0, 0, 0, 0, 0, 0, 0}};
-    #endif
+        #if (_WIZCHIP_ == W5100S)
+            uint8_t memsize[2][4] = {{8, 0, 0, 0}, {8, 0, 0, 0}};
+        #elif (_WIZCHIP_ == W5500)
+            uint8_t memsize[2][8] = {{8, 0, 0, 0, 0, 0, 0, 0}, {8, 0, 0, 0, 0, 0, 0, 0}};
+        #endif
 
-    if (ctlwizchip(CW_INIT_WIZCHIP, (void *)memsize) == -1)
-    {
-        printf(" W5x00 initialized fail\n");
-
-        return;
-    }
-
-    /* Check PHY link status */
-    do
-    {
-        if (ctlwizchip(CW_GET_PHYLINK, (void *)&temp) == -1)
+        if (ctlwizchip(CW_INIT_WIZCHIP, (void *)memsize) == -1)
         {
-            printf(" Unknown PHY link status\n");
+            printf(" W5x00 initialized fail\n");
 
             return;
         }
-    } while (temp == PHY_LINK_OFF);
-}
 
-void physical_layer::wizchip_check(void)
-{
-#if (_WIZCHIP_ == W5100S)
-    /* Read version register */
-    if (getVER() != 0x51)
-    {
-        printf(" ACCESS ERR : VERSION != 0x51, read value = 0x%02x\n", getVER());
+        /* Check PHY link status */
+        do
+        {
+            if (ctlwizchip(CW_GET_PHYLINK, (void *)&temp) == -1)
+            {
+                printf(" Unknown PHY link status\n");
 
-        while (1)
-            ;
+                return;
+            }
+        } while (temp == PHY_LINK_OFF);
     }
-#elif (_WIZCHIP_ == W5500)
-    /* Read version register */
-    if (getVERSIONR() != 0x04)
+
+    void wizchip_check(void)
     {
-        printf(" ACCESS ERR : VERSION != 0x04, read value = 0x%02x\n", getVERSIONR());
+    #if (_WIZCHIP_ == W5100S)
+        /* Read version register */
+        if (getVER() != 0x51)
+        {
+            printf(" ACCESS ERR : VERSION != 0x51, read value = 0x%02x\n", getVER());
 
-        while (1)
-            ;
+            while (1)
+                ;
+        }
+    #elif (_WIZCHIP_ == W5500)
+        /* Read version register */
+        if (getVERSIONR() != 0x04)
+        {
+            printf(" ACCESS ERR : VERSION != 0x04, read value = 0x%02x\n", getVERSIONR());
+
+            while (1)
+                ;
+        }
+    #endif
     }
-#endif
 }
-
-
