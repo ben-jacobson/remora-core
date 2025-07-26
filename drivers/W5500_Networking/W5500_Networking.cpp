@@ -8,6 +8,8 @@
 
 namespace network 
 {
+    volatile rxData_t* ptrRxData = nullptr;
+    volatile txData_t* ptrTxData = nullptr;    
     std::shared_ptr<STM32F4_EthComms> ptr_eth_comms;
     Pin *ptr_csPin = nullptr;
     Pin *ptr_rstPin = nullptr;
@@ -16,8 +18,11 @@ namespace network
     static ip_addr_t g_mask;
     static ip_addr_t g_gateway;
 
-    void EthernetInit(std::shared_ptr<STM32F4_EthComms> ptr_eth_comms, Pin *ptr_csPin, Pin *ptr_rstPin)
+    void EthernetInit(volatile rxData_t* _ptrRxData, volatile txData_t* _ptrTxData, std::shared_ptr<STM32F4_EthComms> ptr_eth_comms, Pin *ptr_csPin, Pin *ptr_rstPin)
     {
+        network::ptrRxData = _ptrRxData;
+        network::ptrTxData = _ptrTxData;
+
         wiznet::wizchip_cris_initialize();
 
         wiznet::wizchip_reset();
@@ -121,71 +126,44 @@ namespace network
         struct pbuf *txBuf;
         uint32_t status;
 
-        // //received data from host needs to go into the inactive buffer
-        // rxData_t* rxBuffer = getAltRxBuffer(&rxPingPongBuffer);
-        // //data sent to host needs to come from the active buffer
-        // txData_t* txBuffer = getCurrentTxBuffer(&txPingPongBuffer);
+        memcpy(&network::ptrRxData, p->payload, p->len);
 
-        // memcpy(&rxBuffer->rxBuffer, p->payload, p->len);
-
-        // //received a PRU request, need to copy data and then change pointer assignments.
-        // if (rxBuffer->header == Config::pruRead || rxBuffer->header == Config::pruWrite) {
-        //     if (rxBuffer->header == Config::pruRead)
-        //     {        
-        //         //if it is a read, need to swap the TX buffer over but the RX buffer needs to remain unchanged.
-        //         //feedback data will now go into the alternate buffer
-        //         while (baseThread->semaphore);
-        //             baseThread->semaphore = true;
-        //         //don't need to wait for the servo thread.
-
-        //         swapTxBuffers(&txPingPongBuffer);
-
-        //         baseThread->semaphore = false;            
-                
-        //         //txBuffer pointer is now directed at the 'old' data for transmission
-        //         txBuffer->header = Config::pruData;
-        //         txlen = Config::dataBuffSize + 4; // to check, why the extra 4 bytes? 
-        //         comms->dataReceived();
-        //     }
-        //     else if (rxBuffer->header == Config::pruWrite)
-        //     {
-        //         //if it is a write, then both the RX and TX buffers need to be changed.
-        //         while (baseThread->semaphore);
-        //             baseThread->semaphore = true;
-        //         //don't need to wait for the servo thread.
-        //         //feedback data will now go into the alternate buffer
-        //         swapTxBuffers(&txPingPongBuffer);
-        //         //frequency command will now come from the new data
-        //         swapRxBuffers(&rxPingPongBuffer);
-        //         baseThread->semaphore = false;               
-                
-        //         //txBuffer pointer is now directed at the 'old' data for transmission
-        //         txBuffer->header = config::pruAcknowledge;
-        //         txlen = Config::dataBuffSize + 4;   
-        //         comms->dataReceived();
-        //     }	
-        // }
+        //received a PRU request, need to copy data and then change pointer assignments.
+        if (network::ptrRxData->header == Config::pruRead || network::ptrRxData->header == Config::pruWrite) {
+            if (network::ptrRxData->header == Config::pruRead)
+            {        
+                network::ptrTxData->header = Config::pruData;
+                txlen = Config::dataBuffSize + 4; // to check, why the extra 4 bytes? 
+                network::ptr_eth_comms->dataReceived();
+            }
+            else if (network::ptrRxData->header == Config::pruWrite)
+            {
+                network::ptrTxData->header = Config::pruAcknowledge;
+                txlen = Config::dataBuffSize + 4;   
+                network::ptr_eth_comms->dataReceived();
+            }	
+        }
     
         // allocate pbuf from RAM
-        // txBuf = pbuf_alloc(PBUF_TRANSPORT, txlen, PBUF_RAM);
+        txBuf = pbuf_alloc(PBUF_TRANSPORT, txlen, PBUF_RAM);
 
-        // // copy the data into the buffer
-        // pbuf_take(txBuf, (char*)&txBuffer->txBuffer, txlen);
+        // copy the data into the buffer
+        pbuf_take(txBuf, (char*)&network::ptrTxData->txBuffer, txlen);
 
-        // // Connect to the remote client
-        // udp_connect(upcb, addr, port);
+        // Connect to the remote client
+        udp_connect(upcb, addr, port);
 
-        // // Send a Reply to the Client
-        // udp_send(upcb, txBuf);
+        // Send a Reply to the Client
+        udp_send(upcb, txBuf);
 
-        // // free the UDP connection, so we can accept new clients
-        // udp_disconnect(upcb);
+        // free the UDP connection, so we can accept new clients
+        udp_disconnect(upcb);
 
-        // // Free the p_tx buffer
-        // pbuf_free(txBuf);
+        // Free the p_tx buffer
+        pbuf_free(txBuf);
 
-        // // Free the p buffer
-        // pbuf_free(p);
+        // Free the p buffer
+        pbuf_free(p);
     }
 
     void network_initialize(wiz_NetInfo net_info)

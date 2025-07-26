@@ -12,7 +12,7 @@ build_flags =
 	-I Src/remora-core/drivers/W5500_Networking/ioLibrary_Driver/Ethernet
 	-I Src/remora-core/drivers/W5500_Networking/lwip/src/include
 
-Namespaces have been encapsulated for composability / reusability. 
+Namespaces are used for encapsulation, for composability and reusability. 
 */
 
 #ifndef W5500_NETWORKING_H
@@ -29,7 +29,7 @@ Namespaces have been encapsulated for composability / reusability.
 #include "arch/cc.h"
 #include "lwip/init.h"
 #include "lwip/netif.h"
-//#include "lwip/timeouts.h"
+//#include "lwip/timeouts.h"    // doesn't seem these are needed? 
 //#include "lwip/pbuf.h"
 //#include "lwip/udp.h"
 //#include "lwip/apps/lwiperf.h"
@@ -44,11 +44,13 @@ Namespaces have been encapsulated for composability / reusability.
 
 namespace network 
 {
+    extern volatile rxData_t* ptrRxData;
+    extern volatile txData_t* ptrTxData;
     extern std::shared_ptr<STM32F4_EthComms> ptr_eth_comms;
     extern Pin *ptr_csPin;
     extern Pin *ptr_rstPin;
 
-    void EthernetInit(std::shared_ptr<STM32F4_EthComms>, Pin*, Pin*);
+    void EthernetInit(volatile rxData_t*, volatile txData_t*, std::shared_ptr<STM32F4_EthComms>, Pin*, Pin*);
     void udpServerInit();
     void EthernetTasks();
     void udp_data_callback(void *arg, struct udp_pcb *upcb, struct pbuf *p, const ip_addr_t *addr, u16_t port);
