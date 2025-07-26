@@ -1,7 +1,18 @@
 /*
 
-Encapsulating namespaces for Wiznet, LWIP and TFTP functionality used in variations of Remora that rely on ethernet connectivity
+W5500_Networking.h
 
+Enables use of W5500 networking and ethernet control to your Remora board. This directory provides slightly modified versions of LWIP and Wiznet W5500 libraries
+originally written by 
+
+To include these in your PlatformIO.ini project, add the following lines to your build flags
+
+build_flags = 
+	-I Src/remora-core/drivers/W5500_Networking/arch
+	-I Src/remora-core/drivers/W5500_Networking/ioLibrary_Driver/Ethernet
+	-I Src/remora-core/drivers/W5500_Networking/lwip/src/include
+
+Namespaces have been encapsulated for composability / reusability. 
 */
 
 #ifndef W5500_NETWORKING_H

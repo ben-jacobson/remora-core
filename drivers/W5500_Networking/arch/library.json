@@ -1,0 +1,11 @@
+{
+    "name": "arch",
+    "version": "1.0.0",
+    "authors": {
+        "name": "Adam Green (https://github.com/adamgreen)"
+    },
+
+    "build": {
+        "srcFilter": "+<*.c> +<*.h>"
+    }
+}

@@ -1,0 +1,7 @@
+{
+  "name": "ioLibrary_Driver",
+  "build": {
+    "srcDir": "ethernet",
+    "includeDir": "."
+  }
+}
