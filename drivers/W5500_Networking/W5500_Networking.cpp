@@ -8,20 +8,25 @@
 
 namespace network 
 {
-    volatile rxData_t* ptrRxData = nullptr;
-    volatile txData_t* ptrTxData = nullptr;    
-    std::shared_ptr<STM32F4_EthComms> ptr_eth_comms;
+    std::shared_ptr<CommsInterface> ptr_eth_comms;
+
+    auto ptrRxData = network::ptr_eth_comms->ptrRxData;
+    auto ptrTxData = network::ptr_eth_comms->ptrTxData;
+
     Pin *ptr_csPin = nullptr;
     Pin *ptr_rstPin = nullptr;
-            
+
+    volatile bool new_pru_request = false; 
+
     static ip_addr_t g_ip;
     static ip_addr_t g_mask;
     static ip_addr_t g_gateway;
 
-    void EthernetInit(volatile rxData_t* _ptrRxData, volatile txData_t* _ptrTxData, std::shared_ptr<STM32F4_EthComms> ptr_eth_comms, Pin *ptr_csPin, Pin *ptr_rstPin)
+    //void EthernetInit(volatile rxData_t* _ptrRxData, volatile txData_t* _ptrTxData, std::shared_ptr<STM32F4_EthComms> ptr_eth_comms, Pin *ptr_csPin, Pin *ptr_rstPin)
+    void EthernetInit(std::shared_ptr<CommsInterface> ptr_eth_comms, Pin *ptr_csPin, Pin *ptr_rstPin)
     {
-        network::ptrRxData = _ptrRxData;
-        network::ptrTxData = _ptrTxData;
+//        network::ptrRxData = _ptrRxData;
+//        network::ptrTxData = _ptrTxData;
 
         wiznet::wizchip_cris_initialize();
 
@@ -122,25 +127,25 @@ namespace network
     void udp_data_callback(void *arg, struct udp_pcb *upcb, struct pbuf *p, const ip_addr_t *addr, u16_t port)
     {
         int txlen = 0;
-        int n;
+        //int n;
         struct pbuf *txBuf;
-        uint32_t status;
+        //uint32_t status;
 
         memcpy(&network::ptrRxData, p->payload, p->len);
 
         //received a PRU request, need to copy data and then change pointer assignments.
         if (network::ptrRxData->header == Config::pruRead || network::ptrRxData->header == Config::pruWrite) {
             if (network::ptrRxData->header == Config::pruRead)
-            {        
+            {                        
                 network::ptrTxData->header = Config::pruData;
                 txlen = Config::dataBuffSize + 4; // to check, why the extra 4 bytes? 
-                network::ptr_eth_comms->dataReceived();
+                //network::new_pru_request = true;    //  do we some how trigger the reg_wizchip_spiburst_cbfunc from here?
             }
             else if (network::ptrRxData->header == Config::pruWrite)
             {
                 network::ptrTxData->header = Config::pruAcknowledge;
                 txlen = Config::dataBuffSize + 4;   
-                network::ptr_eth_comms->dataReceived();
+                //network::new_pru_request = true;    // do we some how trigger the reg_wizchip_spiburst_cbfunc from here?
             }	
         }
     
@@ -170,6 +175,16 @@ namespace network
     {
         ctlnetwork(CN_SET_NETINFO, (void *)&net_info);
     }
+
+    void SPI_DMA_read(uint8_t*, uint16_t)
+    {
+        //TODO - trigger virtual datareceived() (SPI data transfer via DMA)
+    }
+
+    void SPI_DMA_write(uint8_t*, uint16_t) 
+    {
+        // TODO - somehow trigger base class data to write (SPI data transfer via DMA)
+    }    
 
     void print_network_information(wiz_NetInfo net_info)
     {
@@ -362,12 +377,12 @@ namespace wiznet
 {
     static volatile bool spin_lock = false;
 
-    inline void wizchip_select(void)
+    void wizchip_select(void)
     {
         network::ptr_csPin->set(false);
     }
 
-    inline void wizchip_deselect(void)
+    void wizchip_deselect(void)
     {
         network::ptr_csPin->set(true);
 
@@ -375,9 +390,9 @@ namespace wiznet
 
     void wizchip_reset()
     {
-        network::ptr_rstPin->set(LOW);
+        network::ptr_rstPin->set(false);
         delay_ms(100);
-        network::ptr_rstPin->set(HIGH);
+        network::ptr_rstPin->set(true);
         delay_ms(100);
     }
 
@@ -472,7 +487,7 @@ namespace wiznet
 
         // Set up our callback functions for the Wiznet to trigger SPI read and write from the HAL class
         // reg_wizchip_spi_cbfunc(application_layer::ptr_eth_comms->spi_get_byte, application_layer::ptr_eth_comms->spi_put_byte); // for individual SPI bytes only
-        reg_wizchip_spiburst_cbfunc(network::ptr_eth_comms->spi_read, network::ptr_eth_comms->spi_write); // seems the burst function plays better with DMA?
+        reg_wizchip_spiburst_cbfunc(network::SPI_DMA_read, network::SPI_DMA_write); // seems the burst function plays better with DMA?
 
         /* W5x00 initialize */
         uint8_t temp;

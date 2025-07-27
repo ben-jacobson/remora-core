@@ -22,17 +22,15 @@ Namespaces are used for encapsulation, for composability and reusability.
 #include <string.h>
 #include <memory>
 
-#include "remora-hal/STM32F4_EthComms.h"
+//#include "remora-hal/STM32F4_EthComms.h"
+#include "remora-core/comms/commsInterface.h"
+
 #include "remora-hal/pin/pin.h"
 #include "remora-hal/hal_utils.h"
 
 #include "arch/cc.h"
 #include "lwip/init.h"
 #include "lwip/netif.h"
-//#include "lwip/timeouts.h"    // doesn't seem these are needed? 
-//#include "lwip/pbuf.h"
-//#include "lwip/udp.h"
-//#include "lwip/apps/lwiperf.h"
 #include "lwip/etharp.h"
 
 #include "tftpserver.h"
@@ -44,17 +42,22 @@ Namespaces are used for encapsulation, for composability and reusability.
 
 namespace network 
 {
-    extern volatile rxData_t* ptrRxData;
-    extern volatile txData_t* ptrTxData;
-    extern std::shared_ptr<STM32F4_EthComms> ptr_eth_comms;
+    extern std::shared_ptr<CommsInterface> ptr_eth_comms;
+    
     extern Pin *ptr_csPin;
     extern Pin *ptr_rstPin;
 
-    void EthernetInit(volatile rxData_t*, volatile txData_t*, std::shared_ptr<STM32F4_EthComms>, Pin*, Pin*);
+    //extern volatile bool new_pru_request; 
+
+    void EthernetInit(std::shared_ptr<CommsInterface>, Pin*, Pin*);
+
     void udpServerInit();
     void EthernetTasks();
     void udp_data_callback(void *arg, struct udp_pcb *upcb, struct pbuf *p, const ip_addr_t *addr, u16_t port);
     void network_initialize(wiz_NetInfo net_info);
+
+    //static void SPI_DMA_read(uint8_t*, uint16_t);    
+    //static void SPI_DMA_write(uint8_t*, uint16_t);
 
     /*! \brief Print network information
     *  \ingroup w5x00_spi
@@ -173,7 +176,7 @@ namespace wiznet
     *
     *  \param none
     */
-    static inline void wizchip_select(void);
+    static void wizchip_select(void);
 
     /*! \brief Set CS pin
     *  \ingroup w5x00_spi
@@ -182,7 +185,7 @@ namespace wiznet
     *
     *  \param none
     */
-    static inline void wizchip_deselect(void);
+    static void wizchip_deselect(void);
 
     /*! \brief Read from an SPI device, blocking
     *  \ingroup w5x00_spi

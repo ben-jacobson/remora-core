@@ -2,7 +2,7 @@
 #define COMMSINTERFACE_H
 
 #include <functional>
-
+#include "../data.h"
 #include "../modules/module.h"
 
 class CommsInterface : public Module {
@@ -12,6 +12,9 @@ protected:
 	std::function<void(bool)> dataCallback;
 
 public:
+	volatile rxData_t*  		ptrRxData;
+	volatile txData_t*  		ptrTxData;
+
 	CommsInterface();
 
 	virtual void init(void);
