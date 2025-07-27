@@ -4,25 +4,7 @@
 #include <stdio.h>
 #include "../remora-hal/hal_configuration.h" // See note below for how to build this file
 
-// control methods for configiration.h or platformio.ini
-#define SPI_CTRL 1
-#define ETH_CTRL 2
-
-#ifndef CONTROL_METHOD
-    #define CONTROL_METHOD 3    // choose something that isn't either of the correct methods to enable the macro comparisons to do their job.
-#endif
-
 namespace Config {
-    #ifdef CONTROL_METHOD
-        constexpr char pruControlMethod = CONTROL_METHOD;   
-        /* set with build flag in PlatformIO.ini
-            build_flags = 
-                -D CONTROL_METHOD=SPI_CTRL ; alternatively ETH_CTRL
-        */
-    #else   // or don't define it and hardcode it here.
-        constexpr char pruControlMethod = SPI_CTRL; // alternatively ETH_CTRL
-    #endif
-
     constexpr uint32_t pruBaseFreq = 40000;        // PRU Base thread ISR update frequency (hz)
     constexpr uint32_t pruServoFreq = 1000;        // PRU Servo thread ISR update frequency (hz)
     constexpr uint32_t oversample = 3;

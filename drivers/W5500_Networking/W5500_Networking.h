@@ -19,9 +19,9 @@ To include these in your PlatformIO.ini project:
     lib_deps = 
 	    file://lib/     ; notes that lib_extra_dirs was deprecated in PIO 6+
 
-4) add an extra build flag:
+4) add the extra build flag to denote that you want ethernet control for your build:
     build_flags = 
-        -D CONTROL_METHOD=ETH_CTRL
+        -D ETH_CTRL
 
 Without this build flag, this header and the cpp file have been commented out to avoid creating errors when the compiler tries looking for the library files.
 
@@ -34,7 +34,7 @@ The following namespaces are used for encapsulation, for composability and reusa
 
 #include "remora-core/configuration.h"  
 
-#if defined(CONTROL_METHOD) && (CONTROL_METHOD == ETH_CTRL) // only compile this if ETH_CTRL and libraries are set up in platformio.ini
+#ifdef ETH_CTRL
 
 #include <stdio.h>
 #include <string.h>

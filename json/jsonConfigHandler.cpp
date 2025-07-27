@@ -2,7 +2,6 @@
 #include "jsonConfigHandler.h"
 #include "../remora.h"
 
-
 JsonConfigHandler::JsonConfigHandler(Remora* _remora) :
 	remoraInstance(_remora)
 {
@@ -22,12 +21,21 @@ uint8_t JsonConfigHandler::loadConfiguration() {
     // Read and parse the configuration file
     uint8_t status;
 
-    if (Config::pruControlMethod == SPI_CTRL)
-        status = readConfigFromSD();
-    else if (Config::pruControlMethod == ETH_CTRL)
+    // if (Config::pruControlMethod == SPI_CTRL) {
+    //     status = readConfigFromSD();
+    // else if (Config::pruControlMethod == ETH_CTRL)
+    //     status = readConfigFromFlash();
+    // else
+    //     status = 0x00; // trigger downstream error. 
+
+    #if defined(ETH_CTRL)
         status = readConfigFromFlash();
-    else
+    #elif defined(SPI_CTRL)
+        volatile uint32_t meth = SPI_CTRL;
+        status = readConfigFromSD();
+    #else
         status = 0x00; // trigger downstream error. 
+    #endif
 
     if (status != 0x00) {
         return status;

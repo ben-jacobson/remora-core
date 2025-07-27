@@ -7,7 +7,7 @@
  */
 
 
-#if defined(CONTROL_METHOD) && (CONTROL_METHOD == ETH_CTRL) // only compile this if ETH_CTRL and libraries are set up in platformio.ini
+#ifdef ETH_CTRL
 
 namespace network 
 {
