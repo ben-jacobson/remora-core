@@ -5,24 +5,41 @@ W5500_Networking.h
 Enables use of W5500 networking and ethernet control to your Remora board. This directory provides slightly modified versions of LWIP and Wiznet W5500 libraries
 originally written by 
 
-To include these in your PlatformIO.ini project, add the following lines to your build flags
+To include these in your PlatformIO.ini project: 
+1) Download the W5500_Networking driver from here https://github.com/ben-jacobson/Remora-STM32F4xx-W5500/tree/main/lib/W5500_Networking
+2) Extract these files to your /lib/ or /libraries/ folder so that the structure looks like this
+    lib 
+    |---W5500_Networking
+    |------<Folder> arch
+    |------<Folder> ioLibrary_Driver
+    |------<Folder> lwip
+    |------library.json <- this file found ere 
 
-build_flags = 
-	-I Src/remora-core/drivers/W5500_Networking/arch
-	-I Src/remora-core/drivers/W5500_Networking/ioLibrary_Driver/Ethernet
-	-I Src/remora-core/drivers/W5500_Networking/lwip/src/include
+3) Ensure that your lib file is discoverable in the platformio.ini file
+    lib_deps = 
+	    file://lib/     ; notes that lib_extra_dirs was deprecated in PIO 6+
 
-Namespaces are used for encapsulation, for composability and reusability. 
+4) add an extra build flag:
+    build_flags = 
+        -D CONTROL_METHOD=ETH_CTRL
+
+Without this build flag, this header and the cpp file have been commented out to avoid creating errors when the compiler tries looking for the library files.
+
+The following namespaces are used for encapsulation, for composability and reusability. 
 */
+
 
 #ifndef W5500_NETWORKING_H
 #define W5500_NETWORKING_H
+
+#include "remora-core/configuration.h"  
+
+#if defined(CONTROL_METHOD) && (CONTROL_METHOD == ETH_CTRL) // only compile this if ETH_CTRL and libraries are set up in platformio.ini
 
 #include <stdio.h>
 #include <string.h>
 #include <memory>
 
-//#include "remora-hal/STM32F4_EthComms.h"
 #include "remora-core/comms/commsInterface.h"
 
 #include "remora-hal/pin/pin.h"
@@ -299,5 +316,7 @@ namespace wiznet
     *  \param net_info network information.
     */
 }
+
+#endif
 
 #endif

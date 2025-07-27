@@ -6,6 +6,9 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
+
+#if defined(CONTROL_METHOD) && (CONTROL_METHOD == ETH_CTRL) // only compile this if ETH_CTRL and libraries are set up in platformio.ini
+
 namespace network 
 {
     std::shared_ptr<CommsInterface> ptr_eth_comms;
@@ -25,9 +28,6 @@ namespace network
     //void EthernetInit(volatile rxData_t* _ptrRxData, volatile txData_t* _ptrTxData, std::shared_ptr<STM32F4_EthComms> ptr_eth_comms, Pin *ptr_csPin, Pin *ptr_rstPin)
     void EthernetInit(std::shared_ptr<CommsInterface> ptr_eth_comms, Pin *ptr_csPin, Pin *ptr_rstPin)
     {
-//        network::ptrRxData = _ptrRxData;
-//        network::ptrTxData = _ptrTxData;
-
         wiznet::wizchip_cris_initialize();
 
         wiznet::wizchip_reset();
@@ -497,6 +497,8 @@ namespace wiznet
             uint8_t memsize[2][8] = {{8, 0, 0, 0, 0, 0, 0, 0}, {8, 0, 0, 0, 0, 0, 0, 0}};
         #endif
 
+        printf("Attempting to initialize W5500 PHY...");
+
         if (ctlwizchip(CW_INIT_WIZCHIP, (void *)memsize) == -1)
         {
             printf(" W5x00 initialized fail\n");
@@ -539,3 +541,5 @@ namespace wiznet
     #endif
     }
 }
+
+#endif
