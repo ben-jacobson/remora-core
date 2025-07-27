@@ -6,7 +6,7 @@ Enables use of W5500 networking and ethernet control to your Remora board. This 
 originally written by 
 
 To include these in your PlatformIO.ini project: 
-1) Download the W5500_Networking driver from here https://github.com/ben-jacobson/Remora-STM32F4xx-W5500/tree/main/lib/W5500_Networking
+1) Download the W5500_Networking driver from here https://github.com/ben-jacobson/Remora-STM32F4xx-PIO/tree/main/lib/W5500_Networking
 2) Extract these files to your /lib/ or /libraries/ folder so that the structure looks like this
     lib 
     |---W5500_Networking
