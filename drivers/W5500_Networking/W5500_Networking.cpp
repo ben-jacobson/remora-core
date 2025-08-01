@@ -1,5 +1,11 @@
 #include "W5500_Networking.h"
 
+#ifdef DEBUG
+#include <assert.h>
+#else
+#define assert(expr) ((void)0)  
+#endif
+
 /**
  * Copyright (c) 2022 WIZnet Co.,Ltd
  *
@@ -131,29 +137,27 @@ namespace network
 
     void udp_data_callback(void *arg, struct udp_pcb *upcb, struct pbuf *p, const ip_addr_t *addr, u16_t port)
     {
-        int txlen = 0;
-        //int n;
+        uint16_t txlen = 0;
         struct pbuf *txBuf;
-        //uint32_t status;
         
-        memcpy((void*)&network::ptr_eth_comms->ptrRxData->rxBuffer, p->payload, p->len);
+        // rxBuffer is aligned to 32bits. but the buffer is an array of 8 bits, could easily end up in a situation where other platform builds don't respect this
+        assert(((uintptr_t)network::ptr_eth_comms->ptrRxData % alignof(rxData_t)) == 0);  
+        memcpy((void *)network::ptr_eth_comms->ptrRxData, p->payload, std::min<size_t>(p->len, sizeof(rxData_t))); // this just updates the first four bytes, the header. I'm tempted to just manually copy this with four lines. 
 
         //received a PRU request
-        if (network::ptr_eth_comms->ptrRxData->header == Config::pruRead || network::ptr_eth_comms->ptrRxData->header == Config::pruWrite) {
-            if (network::ptr_eth_comms->ptrRxData->header == Config::pruRead)
-            {                        
-                network::ptr_eth_comms->ptrTxData->header = Config::pruData;
-                txlen = Config::dataBuffSize + 4; // to check, why the extra 4 bytes? 
-                //network::new_pru_request = true;   // this is where we could refactor to trigger new data coming in.
-            }
-            else if (network::ptr_eth_comms->ptrRxData->header == Config::pruWrite)
-            {
-                network::ptr_eth_comms->ptrTxData->header = Config::pruAcknowledge;
-                txlen = Config::dataBuffSize + 4;   
-                //network::new_pru_request = true;    // likewise a DMA to move the TX buffer into something the packet can read. 
-            }	
+        if (network::ptr_eth_comms->ptrRxData->header == Config::pruRead)
+        {                        
+            network::ptr_eth_comms->ptrTxData->header = Config::pruData;
+            txlen = Config::dataBuffSize;
+            //network::new_pru_request = true;   // To do - trigger interrupt to replace with DMA read
         }
-    
+        else if (network::ptr_eth_comms->ptrRxData->header == Config::pruWrite)
+        {
+            network::ptr_eth_comms->ptrTxData->header = Config::pruAcknowledge;
+            txlen = Config::dataBuffSize;   
+            //network::new_pru_request = true;    // To do - trigger interrupt to replace with DMA write
+        }	
+
         // allocate pbuf from RAM
         txBuf = pbuf_alloc(PBUF_TRANSPORT, txlen, PBUF_RAM);
 
