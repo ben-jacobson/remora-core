@@ -39,7 +39,12 @@ The following namespaces are used for encapsulation, for composability and reusa
 #include "arch/cc.h"
 #include "lwip/init.h"
 #include "lwip/netif.h"
+#include "lwip/timeouts.h"
+#include "lwip/pbuf.h" 
+#include "lwip/udp.h"
+#include "lwip/apps/lwiperf.h"
 #include "lwip/etharp.h"
+// #include "tftpserver.h"
 
 #include "tftpserver.h"
 #include "socket.h"

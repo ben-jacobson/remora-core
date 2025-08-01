@@ -105,6 +105,7 @@ namespace network
                     pbuf_free(lwip::p);
                 }
             }
+            sys_check_timeouts();
         }
     }
 
@@ -134,22 +135,22 @@ namespace network
         //int n;
         struct pbuf *txBuf;
         //uint32_t status;
+        
+        memcpy((void*)&network::ptr_eth_comms->ptrRxData->rxBuffer, p->payload, p->len);
 
-        memcpy(&network::ptr_eth_comms->ptrRxData, p->payload, p->len);
-
-        //received a PRU request, need to copy data and then change pointer assignments.
+        //received a PRU request
         if (network::ptr_eth_comms->ptrRxData->header == Config::pruRead || network::ptr_eth_comms->ptrRxData->header == Config::pruWrite) {
             if (network::ptr_eth_comms->ptrRxData->header == Config::pruRead)
             {                        
                 network::ptr_eth_comms->ptrTxData->header = Config::pruData;
                 txlen = Config::dataBuffSize + 4; // to check, why the extra 4 bytes? 
-                //network::new_pru_request = true;    //  do we some how trigger the reg_wizchip_spiburst_cbfunc from here?
+                //network::new_pru_request = true;   // this is where we could refactor to trigger new data coming in.
             }
             else if (network::ptr_eth_comms->ptrRxData->header == Config::pruWrite)
             {
                 network::ptr_eth_comms->ptrTxData->header = Config::pruAcknowledge;
                 txlen = Config::dataBuffSize + 4;   
-                //network::new_pru_request = true;    // do we some how trigger the reg_wizchip_spiburst_cbfunc from here?
+                //network::new_pru_request = true;    // likewise a DMA to move the TX buffer into something the packet can read. 
             }	
         }
     
