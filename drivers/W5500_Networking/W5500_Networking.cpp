@@ -6,7 +6,6 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-
 #ifdef ETH_CTRL
 
 namespace network 
@@ -27,6 +26,11 @@ namespace network
         ptr_eth_comms = _ptr_eth_comms; 
         ptr_csPin = _ptr_csPin;
         ptr_rstPin = _ptr_rstPin;
+
+        // initial network setting
+        IP4_ADDR(&g_ip, Config::ip_address[0], Config::ip_address[1], Config::ip_address[2], Config::ip_address[3]);       
+        IP4_ADDR(&g_mask, Config::subnet_mask[0], Config::subnet_mask[1], Config::subnet_mask[2], Config::subnet_mask[3]);
+        IP4_ADDR(&g_gateway, Config::gateway[0], Config::gateway[1], Config::gateway[2], Config::gateway[3]);            
 
         wiznet::wizchip_cris_initialize();
 
@@ -312,7 +316,6 @@ namespace lwip
 
         //uint32_t crc = ethernet_frame_crc(tx_frame, tot_len); // unused? 
 
-        //uint32_t send_len = send_lwip(0, tx_frame, tot_len);
         send_lwip(0, tx_frame, tot_len);
 
         return ERR_OK;
@@ -405,12 +408,11 @@ namespace wiznet
 
     void wizchip_initialize(void)
     {
-
-        /* set both CS and RST pins high by default*/
+        // Set both CS and RST pins high by default
         wizchip_reset();
         wizchip_deselect();
 
-        /* Call back function register for wizchip CS pin */
+        // Call back function register for wizchip CS pin 
         reg_wizchip_cs_cbfunc(wizchip_select, wizchip_deselect);
 
         // Set up our callback functions for the Wiznet to trigger SPI read and write from the HAL class
@@ -476,6 +478,7 @@ namespace wiznet
         if (network::ptr_eth_comms) {
             return network::ptr_eth_comms->read_byte();
         }
+        return 0;
     }
 
     uint8_t SPI_write_byte(uint8_t byte)
@@ -483,8 +486,8 @@ namespace wiznet
         if (network::ptr_eth_comms) {
             return network::ptr_eth_comms->write_byte(byte);      
         }
+        return 0;
     }
-
 
     void SPI_DMA_read(uint8_t *data, uint16_t len)
     {

@@ -40,6 +40,14 @@ namespace Config {
     // SPI configuration
     constexpr uint32_t dataBuffSize = 64;          // Size of SPI receive buffer
 
+    
+    #ifdef ETH_CTRL
+    // Network configuration for Ethernet version 
+    constexpr uint8_t ip_address[4] = {10, 10, 10, 10};
+    constexpr uint8_t subnet_mask[4] = {255, 255, 255, 0};
+    constexpr uint8_t gateway[4] = {10, 10, 10, 1};    
+    #endif
+
     // Default blinky program for non spi config
     constexpr char defaultConfig[] = {
         0x7B, 0x0A, 0x09, 0x22, 0x42, 0x6F, 0x61, 0x72, 0x64, 0x22, 0x3A, 0x20,
