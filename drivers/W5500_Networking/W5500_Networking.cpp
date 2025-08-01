@@ -11,10 +11,7 @@
 
 namespace network 
 {
-    std::shared_ptr<CommsInterface> ptr_eth_comms;
-
-    auto ptrRxData = network::ptr_eth_comms->ptrRxData;
-    auto ptrTxData = network::ptr_eth_comms->ptrTxData;
+    CommsInterface* ptr_eth_comms = nullptr;
 
     Pin *ptr_csPin = nullptr;
     Pin *ptr_rstPin = nullptr;
@@ -25,9 +22,12 @@ namespace network
     static ip_addr_t g_mask;
     static ip_addr_t g_gateway;
 
-    //void EthernetInit(volatile rxData_t* _ptrRxData, volatile txData_t* _ptrTxData, std::shared_ptr<STM32F4_EthComms> ptr_eth_comms, Pin *ptr_csPin, Pin *ptr_rstPin)
-    void EthernetInit(std::shared_ptr<CommsInterface> ptr_eth_comms, Pin *ptr_csPin, Pin *ptr_rstPin)
+    void EthernetInit(CommsInterface* _ptr_eth_comms, Pin *_ptr_csPin, Pin *_ptr_rstPin)
     {
+        ptr_eth_comms = _ptr_eth_comms; 
+        ptr_csPin = _ptr_csPin;
+        ptr_rstPin = _ptr_rstPin;
+
         wiznet::wizchip_cris_initialize();
 
         wiznet::wizchip_reset();
@@ -131,19 +131,19 @@ namespace network
         struct pbuf *txBuf;
         //uint32_t status;
 
-        memcpy(&network::ptrRxData, p->payload, p->len);
+        memcpy(&network::ptr_eth_comms->ptrRxData, p->payload, p->len);
 
         //received a PRU request, need to copy data and then change pointer assignments.
-        if (network::ptrRxData->header == Config::pruRead || network::ptrRxData->header == Config::pruWrite) {
-            if (network::ptrRxData->header == Config::pruRead)
+        if (network::ptr_eth_comms->ptrRxData->header == Config::pruRead || network::ptr_eth_comms->ptrRxData->header == Config::pruWrite) {
+            if (network::ptr_eth_comms->ptrRxData->header == Config::pruRead)
             {                        
-                network::ptrTxData->header = Config::pruData;
+                network::ptr_eth_comms->ptrTxData->header = Config::pruData;
                 txlen = Config::dataBuffSize + 4; // to check, why the extra 4 bytes? 
                 //network::new_pru_request = true;    //  do we some how trigger the reg_wizchip_spiburst_cbfunc from here?
             }
-            else if (network::ptrRxData->header == Config::pruWrite)
+            else if (network::ptr_eth_comms->ptrRxData->header == Config::pruWrite)
             {
-                network::ptrTxData->header = Config::pruAcknowledge;
+                network::ptr_eth_comms->ptrTxData->header = Config::pruAcknowledge;
                 txlen = Config::dataBuffSize + 4;   
                 //network::new_pru_request = true;    // do we some how trigger the reg_wizchip_spiburst_cbfunc from here?
             }	
@@ -153,7 +153,7 @@ namespace network
         txBuf = pbuf_alloc(PBUF_TRANSPORT, txlen, PBUF_RAM);
 
         // copy the data into the buffer
-        pbuf_take(txBuf, (char*)&network::ptrTxData->txBuffer, txlen);
+        pbuf_take(txBuf, (char*)&network::ptr_eth_comms->ptrTxData->txBuffer, txlen);
 
         // Connect to the remote client
         udp_connect(upcb, addr, port);
@@ -175,16 +175,6 @@ namespace network
     {
         ctlnetwork(CN_SET_NETINFO, (void *)&net_info);
     }
-
-    void SPI_DMA_read(uint8_t*, uint16_t)
-    {
-        //TODO - trigger virtual datareceived() (SPI data transfer via DMA)
-    }
-
-    void SPI_DMA_write(uint8_t*, uint16_t) 
-    {
-        // TODO - somehow trigger base class data to write (SPI data transfer via DMA)
-    }    
 
     void print_network_information(wiz_NetInfo net_info)
     {
@@ -379,13 +369,12 @@ namespace wiznet
 
     void wizchip_select(void)
     {
-        network::ptr_csPin->set(false);
+        network::ptr_csPin->set(false); // temporary disable
     }
 
     void wizchip_deselect(void)
     {
         network::ptr_csPin->set(true);
-
     }
 
     void wizchip_reset()
@@ -395,69 +384,6 @@ namespace wiznet
         network::ptr_rstPin->set(true);
         delay_ms(100);
     }
-
-    // uint8_t physical_layer::wizchip_read(void)
-    // {
-    //     uint8_t rx_data = 0;
-    //     uint8_t tx_data = 0xFF;
-
-    //     //spi_read_blocking(SPI_PORT, tx_data, &rx_data, 1);
-
-    //     return rx_data;
-    // }
-
-    // void physical_layer::wizchip_write(uint8_t tx_data)
-    // {
-    //     //spi_write_blocking(SPI_PORT, &tx_data, 1);
-    // }
-
-    //static void wizchip_read_burst(uint8_t *pBuf, uint16_t len)
-    //{
-    //     uint8_t dummy_data = 0xFF;
-
-    //     channel_config_set_read_increment(&dma_channel_config_tx, false);
-    //     channel_config_set_write_increment(&dma_channel_config_tx, false);
-    //     dma_channel_configure(dma_tx, &dma_channel_config_tx,
-    //                           &spi_get_hw(SPI_PORT)->dr, // write address
-    //                           &dummy_data,               // read address
-    //                           len,                       // element count (each element is of size transfer_data_size)
-    //                           false);                    // don't start yet
-
-    //     channel_config_set_read_increment(&dma_channel_config_rx, false);
-    //     channel_config_set_write_increment(&dma_channel_config_rx, true);
-    //     dma_channel_configure(dma_rx, &dma_channel_config_rx,
-    //                           pBuf,                      // write address
-    //                           &spi_get_hw(SPI_PORT)->dr, // read address
-    //                           len,                       // element count (each element is of size transfer_data_size)
-    //                           false);                    // don't start yet
-
-    //     dma_start_channel_mask((1u << dma_tx) | (1u << dma_rx));
-    //     dma_channel_wait_for_finish_blocking(dma_rx);
-    //}
-
-    //void physical_layer::wizchip_write_burst(uint8_t *pBuf, uint16_t len)
-    //{
-    //     uint8_t dummy_data;
-
-    //     channel_config_set_read_increment(&dma_channel_config_tx, true);
-    //     channel_config_set_write_increment(&dma_channel_config_tx, false);
-    //     dma_channel_configure(dma_tx, &dma_channel_config_tx,
-    //                           &spi_get_hw(SPI_PORT)->dr, // write address
-    //                           pBuf,                      // read address
-    //                           len,                       // element count (each element is of size transfer_data_size)
-    //                           false);                    // don't start yet
-
-    //     channel_config_set_read_increment(&dma_channel_config_rx, false);
-    //     channel_config_set_write_increment(&dma_channel_config_rx, false);
-    //     dma_channel_configure(dma_rx, &dma_channel_config_rx,
-    //                           &dummy_data,               // write address
-    //                           &spi_get_hw(SPI_PORT)->dr, // read address
-    //                           len,                       // element count (each element is of size transfer_data_size)
-    //                           false);                    // don't start yet
-
-    //     dma_start_channel_mask((1u << dma_tx) | (1u << dma_rx));
-    //     dma_channel_wait_for_finish_blocking(dma_rx);
-    //}
 
     void wizchip_critical_section_lock(void)
     {
@@ -486,8 +412,8 @@ namespace wiznet
         reg_wizchip_cs_cbfunc(wizchip_select, wizchip_deselect);
 
         // Set up our callback functions for the Wiznet to trigger SPI read and write from the HAL class
-        // reg_wizchip_spi_cbfunc(application_layer::ptr_eth_comms->spi_get_byte, application_layer::ptr_eth_comms->spi_put_byte); // for individual SPI bytes only
-        reg_wizchip_spiburst_cbfunc(network::SPI_DMA_read, network::SPI_DMA_write); // seems the burst function plays better with DMA?
+        reg_wizchip_spi_cbfunc(wiznet::SPI_read_byte, wiznet::SPI_write_byte); // for individual SPI bytes only
+        reg_wizchip_spiburst_cbfunc(wiznet::SPI_DMA_read, wiznet::SPI_DMA_write); // burst function will be better suited to DMA transfers. 
 
         /* W5x00 initialize */
         uint8_t temp;
@@ -497,11 +423,11 @@ namespace wiznet
             uint8_t memsize[2][8] = {{8, 0, 0, 0, 0, 0, 0, 0}, {8, 0, 0, 0, 0, 0, 0, 0}};
         #endif
 
-        printf("Attempting to initialize W5500 PHY...");
+        printf("Attempting to initialize W5500 PHY...:");
 
         if (ctlwizchip(CW_INIT_WIZCHIP, (void *)memsize) == -1)
         {
-            printf(" W5x00 initialized fail\n");
+            printf(" W5x00 initialization failed\n");
 
             return;
         }
@@ -516,6 +442,8 @@ namespace wiznet
                 return;
             }
         } while (temp == PHY_LINK_OFF);
+
+        printf(" Success!\n"); 
     }
 
     void wizchip_check(void)
@@ -540,6 +468,35 @@ namespace wiznet
         }
     #endif
     }
+
+    uint8_t SPI_read_byte(void)
+    {
+        if (network::ptr_eth_comms) {
+            return network::ptr_eth_comms->read_byte();
+        }
+    }
+
+    uint8_t SPI_write_byte(uint8_t byte)
+    {
+        if (network::ptr_eth_comms) {
+            return network::ptr_eth_comms->write_byte(byte);      
+        }
+    }
+
+
+    void SPI_DMA_read(uint8_t *data, uint16_t len)
+    {
+        if (network::ptr_eth_comms) {
+            network::ptr_eth_comms->DMA_read(data, len);
+        }
+    }
+
+    void SPI_DMA_write(uint8_t *data, uint16_t len) 
+    {
+        if (network::ptr_eth_comms) {
+            network::ptr_eth_comms->DMA_write(data, len);         
+        }
+    }    
 }
 
 #endif

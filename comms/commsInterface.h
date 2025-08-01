@@ -21,6 +21,11 @@ public:
 	virtual void start(void);
 	virtual void tasks(void);
 
+	virtual uint8_t read_byte(void);
+	virtual uint8_t write_byte(uint8_t);
+	virtual void DMA_write(uint8_t*, uint16_t);
+	virtual void DMA_read(uint8_t*, uint16_t);
+
     void setDataCallback(const std::function<void(bool)>& callback) {
         dataCallback = callback;
     }

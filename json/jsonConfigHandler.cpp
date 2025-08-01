@@ -21,20 +21,10 @@ uint8_t JsonConfigHandler::loadConfiguration() {
     // Read and parse the configuration file
     uint8_t status;
 
-    // if (Config::pruControlMethod == SPI_CTRL) {
-    //     status = readConfigFromSD();
-    // else if (Config::pruControlMethod == ETH_CTRL)
-    //     status = readConfigFromFlash();
-    // else
-    //     status = 0x00; // trigger downstream error. 
-
-    #if defined(ETH_CTRL)
+    #ifdef ETH_CTRL
         status = readConfigFromFlash();
-    #elif defined(SPI_CTRL)
-        volatile uint32_t meth = SPI_CTRL;
-        status = readConfigFromSD();
     #else
-        status = 0x00; // trigger downstream error. 
+        status = readConfigFromSD();
     #endif
 
     if (status != 0x00) {

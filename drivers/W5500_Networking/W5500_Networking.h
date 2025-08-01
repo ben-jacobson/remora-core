@@ -21,7 +21,7 @@ To include these in your PlatformIO.ini project:
 
 4) add the extra build flag to denote that you want ethernet control for your build:
     build_flags = 
-        -D ETH_CTRL
+        -D ETH_CTRL=1
 
 Without this build flag, this header and the cpp file have been commented out to avoid creating errors when the compiler tries looking for the library files.
 
@@ -59,22 +59,19 @@ The following namespaces are used for encapsulation, for composability and reusa
 
 namespace network 
 {
-    extern std::shared_ptr<CommsInterface> ptr_eth_comms;
+    extern CommsInterface *ptr_eth_comms;
     
     extern Pin *ptr_csPin;
     extern Pin *ptr_rstPin;
 
     //extern volatile bool new_pru_request; 
 
-    void EthernetInit(std::shared_ptr<CommsInterface>, Pin*, Pin*);
+    void EthernetInit(CommsInterface*, Pin*, Pin*);
 
     void udpServerInit();
     void EthernetTasks();
     void udp_data_callback(void *arg, struct udp_pcb *upcb, struct pbuf *p, const ip_addr_t *addr, u16_t port);
     void network_initialize(wiz_NetInfo net_info);
-
-    //static void SPI_DMA_read(uint8_t*, uint16_t);    
-    //static void SPI_DMA_write(uint8_t*, uint16_t);
 
     /*! \brief Print network information
     *  \ingroup w5x00_spi
@@ -315,6 +312,10 @@ namespace wiznet
     *
     *  \param net_info network information.
     */
+    static void SPI_DMA_read(uint8_t*, uint16_t);    
+    static void SPI_DMA_write(uint8_t*, uint16_t);
+    static uint8_t SPI_read_byte(void);
+    static uint8_t SPI_write_byte(uint8_t);       
 }
 
 #endif
