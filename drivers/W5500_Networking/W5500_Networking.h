@@ -6,20 +6,11 @@ Enables use of W5500 networking and ethernet control to your Remora board. This 
 originally written by 
 
 To include these in your PlatformIO.ini project: 
-1) Download the W5500_Networking driver from here https://github.com/ben-jacobson/Remora-STM32F4xx-PIO/tree/main/lib/W5500_Networking
-2) Extract these files to your /lib/ or /libraries/ folder so that the structure looks like this
-    lib 
-    |---W5500_Networking
-    |------<Folder> arch
-    |------<Folder> ioLibrary_Driver
-    |------<Folder> lwip
-    |------library.json <- this file found ere 
-
-3) Ensure that your lib file is discoverable in the platformio.ini file
+1) Ensure that your lib file is discoverable in the platformio.ini file
     lib_deps = 
-	    file://lib/     ; notes that lib_extra_dirs was deprecated in PIO 6+
+        W5500_Networking=file://Src/remora-core/drivers/W5500_Networking/W5500_Networking.zip ; notes that lib_extra_dirs was deprecated in PIO 6+
 
-4) add the extra build flag to denote that you want ethernet control for your build:
+2) add the extra build flag to denote that you want ethernet control for your build:
     build_flags = 
         -D ETH_CTRL=1
 

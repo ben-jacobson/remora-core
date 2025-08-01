@@ -369,7 +369,7 @@ namespace wiznet
 
     void wizchip_select(void)
     {
-        network::ptr_csPin->set(false); // temporary disable
+        network::ptr_csPin->set(false); 
     }
 
     void wizchip_deselect(void)
@@ -405,7 +405,9 @@ namespace wiznet
 
     void wizchip_initialize(void)
     {
-        /* Deselect the FLASH : chip select high */
+
+        /* set both CS and RST pins high by default*/
+        wizchip_reset();
         wizchip_deselect();
 
         /* Call back function register for wizchip CS pin */
