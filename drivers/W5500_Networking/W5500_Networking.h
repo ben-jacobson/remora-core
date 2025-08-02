@@ -168,7 +168,7 @@ namespace lwip
     *  \param length the total length of ethernet frame
     *  \return an ethernet frame cyclic redundancy check result value
     */
-    static uint32_t ethernet_frame_crc(const uint8_t *data, int length);
+    //static uint32_t ethernet_frame_crc(const uint8_t *data, int length);
 }
 
 namespace wiznet 
@@ -186,7 +186,7 @@ namespace wiznet
     *
     *  \param none
     */
-    static void wizchip_select(void);
+    //void wizchip_select(void);
 
     /*! \brief Set CS pin
     *  \ingroup w5x00_spi
@@ -195,7 +195,7 @@ namespace wiznet
     *
     *  \param none
     */
-    static void wizchip_deselect(void);
+    //void wizchip_deselect(void);
 
     /*! \brief Read from an SPI device, blocking
     *  \ingroup w5x00_spi
@@ -248,7 +248,7 @@ namespace wiznet
     // *
     // *  \param none
     // */
-    static void wizchip_critical_section_lock(void);
+    //void wizchip_critical_section_lock(void);
 
     /*! \brief Release a critical section
     *  \ingroup w5x00_spi
@@ -258,7 +258,7 @@ namespace wiznet
     *
     *  \param none
     */
-    static void wizchip_critical_section_unlock(void);
+    //void wizchip_critical_section_unlock(void);
 
     /*! \brief Initialize SPI instances and Set DMA channel
     *  \ingroup w5x00_spi
@@ -308,11 +308,12 @@ namespace wiznet
     *
     *  \param net_info network information.
     */
-    static void SPI_DMA_read(uint8_t*, uint16_t);    
-    static void SPI_DMA_write(uint8_t*, uint16_t);
-    static uint8_t SPI_read_byte(void);
-    static uint8_t SPI_write_byte(uint8_t);       
+    //uint8_t SPI_read_byte(void);
+    //uint8_t SPI_write_byte(uint8_t);       
+    //void SPI_DMA_read(uint8_t*, uint16_t);    
+    //void SPI_DMA_write(uint8_t*, uint16_t);
 }
+
 
 #endif
 

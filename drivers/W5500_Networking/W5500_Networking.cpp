@@ -347,40 +347,45 @@ namespace lwip
         return ERR_OK;
     }
 
-    uint32_t ethernet_frame_crc(const uint8_t *data, int length)
-    {
-        uint32_t crc = 0xffffffff; /* Initial value. */
+    // uint32_t ethernet_frame_crc(const uint8_t *data, int length)
+    // {
+    //     uint32_t crc = 0xffffffff; /* Initial value. */
 
-        while (--length >= 0)
-        {
-            uint8_t current_octet = *data++;
+    //     while (--length >= 0)
+    //     {
+    //         uint8_t current_octet = *data++;
 
-            for (int bit = 8; --bit >= 0; current_octet >>= 1)
-            {
-                if ((crc ^ current_octet) & 1)
-                {
-                    crc >>= 1;
-                    crc ^= lwip::ethernet_polynomial_le;
-                }
-                else
-                    crc >>= 1;
-            }
-        }
+    //         for (int bit = 8; --bit >= 0; current_octet >>= 1)
+    //         {
+    //             if ((crc ^ current_octet) & 1)
+    //             {
+    //                 crc >>= 1;
+    //                 crc ^= lwip::ethernet_polynomial_le;
+    //             }
+    //             else
+    //                 crc >>= 1;
+    //         }
+    //     }
 
-        return ~crc;
-    }
+    //     return ~crc;
+    // }
 }
 
 namespace wiznet 
 {
+    static uint8_t SPI_read_byte(void);
+    static uint8_t SPI_write_byte(uint8_t);       
+    static void SPI_DMA_read(uint8_t*, uint16_t);    
+    static void SPI_DMA_write(uint8_t*, uint16_t);
+
     static volatile bool spin_lock = false;
 
-    void wizchip_select(void)
+    static void wizchip_select(void)
     {
         network::ptr_csPin->set(false); 
     }
 
-    void wizchip_deselect(void)
+    static void wizchip_deselect(void)
     {
         network::ptr_csPin->set(true);
     }
@@ -393,14 +398,14 @@ namespace wiznet
         delay_ms(100);
     }
 
-    void wizchip_critical_section_lock(void)
+    static void wizchip_critical_section_lock(void)
     {
         while(wiznet::spin_lock);
 
         wiznet::spin_lock = true;
     }
 
-    void wizchip_critical_section_unlock(void)
+    static void wizchip_critical_section_unlock(void)
     {
         wiznet::spin_lock = false;
     }
@@ -421,8 +426,8 @@ namespace wiznet
         reg_wizchip_cs_cbfunc(wizchip_select, wizchip_deselect);
 
         // Set up our callback functions for the Wiznet to trigger SPI read and write from the HAL class
-        reg_wizchip_spi_cbfunc(wiznet::SPI_read_byte, wiznet::SPI_write_byte); // for individual SPI bytes only
-        reg_wizchip_spiburst_cbfunc(wiznet::SPI_DMA_read, wiznet::SPI_DMA_write); // burst function will be better suited to DMA transfers. 
+        reg_wizchip_spi_cbfunc(SPI_read_byte, SPI_write_byte); // for individual SPI bytes only
+        reg_wizchip_spiburst_cbfunc(SPI_DMA_read, SPI_DMA_write); // burst function will be better suited to DMA transfers. 
 
         /* W5x00 initialize */
         uint8_t temp;
@@ -478,7 +483,7 @@ namespace wiznet
     #endif
     }
 
-    uint8_t SPI_read_byte(void)
+    static uint8_t SPI_read_byte(void)
     {
         if (network::ptr_eth_comms) {
             return network::ptr_eth_comms->read_byte();
@@ -486,7 +491,7 @@ namespace wiznet
         return 0;
     }
 
-    uint8_t SPI_write_byte(uint8_t byte)
+    static uint8_t SPI_write_byte(uint8_t byte)
     {
         if (network::ptr_eth_comms) {
             return network::ptr_eth_comms->write_byte(byte);      
@@ -494,14 +499,14 @@ namespace wiznet
         return 0;
     }
 
-    void SPI_DMA_read(uint8_t *data, uint16_t len)
+    static void SPI_DMA_read(uint8_t *data, uint16_t len)
     {
         if (network::ptr_eth_comms) {
             network::ptr_eth_comms->DMA_read(data, len);
         }
     }
 
-    void SPI_DMA_write(uint8_t *data, uint16_t len) 
+    static void SPI_DMA_write(uint8_t *data, uint16_t len) 
     {
         if (network::ptr_eth_comms) {
             network::ptr_eth_comms->DMA_write(data, len);         
