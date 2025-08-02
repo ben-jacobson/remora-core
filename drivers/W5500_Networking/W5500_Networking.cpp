@@ -117,28 +117,33 @@ namespace network
 
     void udpServerInit(void)
     {
-    struct udp_pcb *upcb;
-    err_t err;
+        struct udp_pcb *upcb;
+        err_t err;
 
-    // UDP control block for data
-    upcb = udp_new();
-    err = udp_bind(upcb, &g_ip, 27181);  // 27181 is the server UDP port
+        // UDP control block for data
+        upcb = udp_new();
+        err = udp_bind(upcb, &g_ip, 27181);  // 27181 is the server UDP port
 
-    /* 3. Set a receive callback for the upcb */
-    if(err == ERR_OK)
-    {
-        udp_recv(upcb, udp_data_callback, NULL);
-    }
-    else
-    {
-        udp_remove(upcb);
-    }
+        /* 3. Set a receive callback for the upcb */
+        if(err == ERR_OK)
+        {
+            udp_recv(upcb, udp_data_callback, NULL);
+        }
+        else
+        {
+            udp_remove(upcb);
+        }
     }
 
     void udp_data_callback(void *arg, struct udp_pcb *upcb, struct pbuf *p, const ip_addr_t *addr, u16_t port)
     {
         uint16_t txlen = 0;
         struct pbuf *txBuf;
+
+        // //received data from host needs to go into the inactive buffer
+        // rxData_t* rxBuffer = getAltRxBuffer(&rxPingPongBuffer);
+        // //data sent to host needs to come from the active buffer
+        // txData_t* txBuffer = getCurrentTxBuffer(&txPingPongBuffer);
         
         // rxBuffer is aligned to 32bits. but the buffer is an array of 8 bits, could easily end up in a situation where other platform builds don't respect this
         assert(((uintptr_t)network::ptr_eth_comms->ptrRxData % alignof(rxData_t)) == 0);  
@@ -146,16 +151,36 @@ namespace network
 
         //received a PRU request
         if (network::ptr_eth_comms->ptrRxData->header == Config::pruRead)
-        {                        
+        {          
+            //if it is a read, need to swap the TX buffer over but the RX buffer needs to remain unchanged.
+            //feedback data will now go into the alternate buffer
+            //don't need to wait for the servo thread.
+            //disable interrupts and swap the buffers.
+
+            //__disable_irq();
+            //swapTxBuffers(&txPingPongBuffer);
+            //__enable_irq();
+            
             network::ptr_eth_comms->ptrTxData->header = Config::pruData;
             txlen = Config::dataBuffSize;
-            //network::new_pru_request = true;   // To do - trigger interrupt to replace with DMA read
+            //comms->dataReceived();
+
         }
         else if (network::ptr_eth_comms->ptrRxData->header == Config::pruWrite)
         {
+            //if it is a write, then both the RX and TX buffers need to be changed.
+            //don't need to wait for the servo thread.
+            //disable interrupts and swap the buffers.
+            //feedback data will now go into the alternate buffer
+            // __disable_irq();
+            // swapTxBuffers(&txPingPongBuffer);
+            // //frequency command will now come from the new data
+            // swapRxBuffers(&rxPingPongBuffer);
+            // __enable_irq();
+
             network::ptr_eth_comms->ptrTxData->header = Config::pruAcknowledge;
             txlen = Config::dataBuffSize;   
-            //network::new_pru_request = true;    // To do - trigger interrupt to replace with DMA write
+            //comms->dataReceived();
         }	
 
         // allocate pbuf from RAM
