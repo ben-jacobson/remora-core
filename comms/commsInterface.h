@@ -8,10 +8,9 @@
 class CommsInterface : public Module {
 private:
 
-protected:
+public:
 	std::function<void(bool)> dataCallback;
 
-public:
 	volatile rxData_t*  		ptrRxData;
 	volatile txData_t*  		ptrTxData;
 
@@ -25,6 +24,7 @@ public:
 	virtual uint8_t write_byte(uint8_t);
 	virtual void DMA_write(uint8_t*, uint16_t);
 	virtual void DMA_read(uint8_t*, uint16_t);
+	virtual void flag_new_data(void);
 
     void setDataCallback(const std::function<void(bool)>& callback) {
         dataCallback = callback;

@@ -53,6 +53,13 @@ The following namespaces are used for encapsulation, for composability and reusa
 #define SOCKET_MACRAW 0
 #define PORT_LWIPERF 5001
 
+#define RING_BUFFER_SIZE 2   // We used a ring buffer for lost packet detection. Can be 2, 4 or 8 or any multiple above.
+
+// typedef struct {
+//     uint8_t data[sizeof(rxData_t)];
+//     uint16_t len;
+// } packet_t;
+
 namespace network 
 {
     extern CommsInterface *ptr_eth_comms;
@@ -60,7 +67,10 @@ namespace network
     extern Pin *ptr_csPin;
     extern Pin *ptr_rstPin;
 
-    //extern volatile bool new_pru_request; 
+    //extern volatile packet_t ring_buffer[RING_BUFFER_SIZE];
+    extern volatile uint8_t head;
+    extern volatile uint8_t tail;
+    extern volatile uint8_t dropped_packets;   
 
     void EthernetInit(CommsInterface*, Pin*, Pin*);
 
@@ -88,7 +98,7 @@ namespace lwip
     extern uint8_t *pack;
     extern uint16_t pack_len;
     extern struct pbuf *p;    
-
+    
     /**
      * ----------------------------------------------------------------------------------------------------
      * Functions
