@@ -53,7 +53,7 @@ The following namespaces are used for encapsulation, for composability and reusa
 #define SOCKET_MACRAW 0
 #define PORT_LWIPERF 5001
 
-#define RING_BUFFER_SIZE 2   // We used a ring buffer for lost packet detection. Can be 2, 4 or 8 or any multiple above.
+#define RING_BUFFER_SIZE 8   // We used a ring buffer for lost packet detection. Can be 2, 4 or 8 or any multiple above.
 
 // typedef struct {
 //     uint8_t data[sizeof(rxData_t)];

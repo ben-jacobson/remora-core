@@ -226,6 +226,10 @@ namespace network
 
         // Free the p buffer
         pbuf_free(p);
+
+        // since these memory operations are blocking, only update the tail if we reach the end of this function. The idea is that the dropped packets algo above will only cause use issues if the interrupt is refired before this function completes
+        // TODO - see if we can fire an update callback instead to update the tail once Remora has finished processing the data. 
+        tail = (tail + 1) & (RING_BUFFER_SIZE - 1);        
     }
 
     void network_initialize(wiz_NetInfo net_info)
