@@ -49,6 +49,23 @@ The following namespaces are used for encapsulation, for composability and reusa
 #include "tftpserver.h"
 #include "socket.h"
 
+//tftp defines
+#define TFTP_OPCODE_LEN         2
+#define TFTP_BLKNUM_LEN         2
+#define TFTP_DATA_LEN_MAX       512
+#define TFTP_DATA_PKT_HDR_LEN   (TFTP_OPCODE_LEN + TFTP_BLKNUM_LEN)
+#define TFTP_ERR_PKT_HDR_LEN    (TFTP_OPCODE_LEN + TFTP_ERRCODE_LEN)
+#define TFTP_ACK_PKT_LEN        (TFTP_OPCODE_LEN + TFTP_BLKNUM_LEN)
+#define TFTP_DATA_PKT_LEN_MAX   (TFTP_DATA_PKT_HDR_LEN + TFTP_DATA_LEN_MAX)
+#define TFTP_MAX_RETRIES        3
+#define TFTP_TIMEOUT_INTERVAL   5
+
+#define FLASH_BYTE        0x00000000U
+#define FLASH_HALFWORD    0x00000001U
+#define FLASH_WORD        0x00000002U
+#define FLASH_DOUBLEWORD  0x00000003U
+
+// Networking defines
 #define ETHERNET_MTU 1500
 #define SOCKET_MACRAW 0
 #define PORT_LWIPERF 5001
@@ -324,6 +341,12 @@ namespace wiznet
     //void SPI_DMA_write(uint8_t*, uint16_t);
 }
 
+namespace tftp 
+{
+    extern volatile bool newJson;
+ 
+    void IAP_tftpd_init(void);
+}
 
 #endif
 
