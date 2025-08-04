@@ -32,6 +32,7 @@ The following namespaces are used for encapsulation, for composability and reusa
 #include <memory>
 
 #include "remora-core/comms/commsInterface.h"
+#include "../../json/jsonConfigHandler.h"
 
 #include "remora-hal/pin/pin.h"
 #include "remora-hal/hal_utils.h"
@@ -41,12 +42,10 @@ The following namespaces are used for encapsulation, for composability and reusa
 #include "lwip/netif.h"
 #include "lwip/timeouts.h"
 #include "lwip/pbuf.h" 
+#include "lwip/mem.h"
 #include "lwip/udp.h"
 #include "lwip/apps/lwiperf.h"
 #include "lwip/etharp.h"
-// #include "tftpserver.h"
-
-#include "tftpserver.h"
 #include "socket.h"
 
 //tftp defines
@@ -59,11 +58,6 @@ The following namespaces are used for encapsulation, for composability and reusa
 #define TFTP_DATA_PKT_LEN_MAX   (TFTP_DATA_PKT_HDR_LEN + TFTP_DATA_LEN_MAX)
 #define TFTP_MAX_RETRIES        3
 #define TFTP_TIMEOUT_INTERVAL   5
-
-#define FLASH_BYTE        0x00000000U
-#define FLASH_HALFWORD    0x00000001U
-#define FLASH_WORD        0x00000002U
-#define FLASH_DOUBLEWORD  0x00000003U
 
 // Networking defines
 #define ETHERNET_MTU 1500
@@ -195,7 +189,7 @@ namespace lwip
     *  \param length the total length of ethernet frame
     *  \return an ethernet frame cyclic redundancy check result value
     */
-    //static uint32_t ethernet_frame_crc(const uint8_t *data, int length);
+    uint32_t ethernet_frame_crc(const uint8_t *data, int length);    
 }
 
 namespace wiznet 
@@ -343,8 +337,47 @@ namespace wiznet
 
 namespace tftp 
 {
-    extern volatile bool newJson;
- 
+    typedef struct
+    {
+    int op;    /*WRQ */
+    /* last block read */
+    char data[TFTP_DATA_PKT_LEN_MAX];
+    int  data_len;
+    /* destination ip:port */
+    ip_addr_t to_ip;
+    int to_port;
+    /* next block number */
+    int block;
+    /* total number of bytes transferred */
+    int tot_bytes;
+    /* timer interrupt count when last packet was sent */
+    /* this should be used to resend packets on timeout */
+    unsigned long long last_time;
+    
+    } tftp_connection_args;
+
+    /* TFTP opcodes as specified in RFC1350   */
+    typedef enum {
+    TFTP_RRQ = 1,
+    TFTP_WRQ = 2,
+    TFTP_DATA = 3,
+    TFTP_ACK = 4,
+    TFTP_ERROR = 5
+    } tftp_opcode;
+
+
+    /* TFTP error codes as specified in RFC1350  */
+    typedef enum {
+    TFTP_ERR_NOTDEFINED,
+    TFTP_ERR_FILE_NOT_FOUND,
+    TFTP_ERR_ACCESS_VIOLATION,
+    TFTP_ERR_DISKFULL,
+    TFTP_ERR_ILLEGALOP,
+    TFTP_ERR_UKNOWN_TRANSFER_ID,
+    TFTP_ERR_FILE_ALREADY_EXISTS,
+    TFTP_ERR_NO_SUCH_USER,
+    } tftp_errorcode;
+
     void IAP_tftpd_init(void);
 }
 

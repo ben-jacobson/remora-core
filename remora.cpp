@@ -7,6 +7,8 @@
 volatile txData_t txData;
 volatile rxData_t rxData;
 
+extern volatile bool new_flash_json;
+
 Remora::Remora(std::shared_ptr<CommsHandler> commsHandler,
                std::unique_ptr<pruTimer> baseTimer,
                std::unique_ptr<pruTimer> servoTimer,
@@ -175,6 +177,23 @@ void Remora::run()
                 printf("Error: Invalid state\n");
                 break;
         }
+
+        #ifdef ETH_CTRL
+        if (new_flash_json)
+        {
+            printf("Checking new configuration file\n");
+            if (configHandler->json_check_length_and_CRC() > 0)
+            {
+                printf("Moving new config file to Flash storage\n");
+                configHandler->store_json_in_flash();
+
+                // force a reset to load new JSON configuration
+                printf("Forcing reboot now...\n");
+                pru_reboot();
+            }
+        }
+        #endif
+
         comms->tasks();
     }
 }

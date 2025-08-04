@@ -1,6 +1,11 @@
 
 #include "jsonConfigHandler.h"
 #include "../remora.h"
+#include "crc32.h"
+
+#ifdef ETH_CTRL
+volatile bool new_flash_json = false;
+#endif
 
 JsonConfigHandler::JsonConfigHandler(Remora* _remora) :
 	remoraInstance(_remora)
@@ -181,3 +186,102 @@ uint8_t JsonConfigHandler::parseJson() {
 
     return makeRemoraStatus(RemoraErrorSource::NO_ERROR, RemoraErrorCode::NO_ERROR);
 }
+
+int8_t JsonConfigHandler::json_check_length_and_CRC(void) 
+{
+    uint32_t crc32;
+
+	json_metadata_t* meta = (json_metadata_t*)HAL_Config::JSON_upload_address; 
+	uint32_t* json = (uint32_t*)(HAL_Config::JSON_upload_address + metadata_len);
+
+    uint32_t table[256];
+    crc32::generate_table(table);
+    int mod, padding;
+
+	// Check length is reasonable
+	if (meta->length > (HAL_Config::user_flash_end_address - HAL_Config::JSON_upload_address))
+	{
+		new_flash_json = false;
+		printf("JSON Config length incorrect\n");
+		return -1;
+	}
+
+    // for compatability with STM32 hardware CRC32, the config is padded to a 32 byte boundary
+    mod = meta->jsonLength % 4;
+    if (mod > 0)
+    {
+        padding = 4 - mod;
+    }
+    else
+    {
+        padding = 0;
+    }
+    printf("mod = %d, padding = %d\n", mod, padding);
+
+	// Compute CRC
+    char* ptr = (char *)(HAL_Config::JSON_upload_address + metadata_len);
+    for (int i = 0; i < meta->jsonLength + padding; i++)
+    {
+        crc32 = crc32::update(table, crc32, ptr, 1);
+        ptr++;
+    }
+
+	printf("Length (words) = %d\n", meta->length);
+	printf("JSON length (bytes) = %d\n", meta->jsonLength);
+	printf("crc32 = %x\n", crc32);
+
+	// Check CRC
+	if (crc32 != meta->crc32)
+	{
+		new_flash_json = false;
+		printf("JSON Config file CRC incorrect\n");
+		return -1;
+	}
+
+	// JSON is OK, don't check it again
+	new_flash_json = false;
+	printf("JSON Config file received Ok\n");
+	return 1;
+}
+
+#ifdef ETH_CTRL
+void JsonConfigHandler::store_json_in_flash(void)
+{
+	uint32_t i = 0;
+	json_metadata_t* meta = (json_metadata_t*)HAL_Config::JSON_upload_address;  // unsure if this going to work with how we have split the sector in two. 
+    
+	uint16_t jsonLength = meta->jsonLength;
+
+    printf("JSON Length: %d\n", jsonLength);
+
+    unlock_flash();
+
+	// erase the old JSON config file
+    printf("Erasing flash\n");
+	mass_erase_flash_sector(HAL_Config::JSON_Sector);
+
+	uint8_t status;
+
+	// store the length of the file in the 0th byte
+    printf("Write file length\n");
+	status = write_to_flash_word(HAL_Config::JSON_storage_address, jsonLength);
+
+    jsonLength = *(uint32_t*)(HAL_Config::JSON_storage_address);
+    printf("Written JSON Length %d\n", jsonLength);
+
+    jsonLength = meta->jsonLength;
+
+    printf("Copying data\n");
+    for (i = 0; i < jsonLength; i++)
+    {
+        if (status == 0)
+        {
+            status = write_to_flash_byte((HAL_Config::JSON_storage_address + 4 + i), *((uint8_t*)(HAL_Config::JSON_upload_address + metadata_len + i)));
+        }
+    }
+    
+    lock_flash();
+    printf("Data Copied\n");
+
+}
+#endif

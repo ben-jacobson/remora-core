@@ -14,6 +14,8 @@
 
 #ifdef ETH_CTRL
 
+extern volatile bool new_flash_json;
+
 namespace network 
 {
     CommsInterface* ptr_eth_comms = nullptr;
@@ -81,6 +83,10 @@ namespace network
         // Set the default interface and bring it up
         netif_set_link_up(&lwip::g_netif);
         netif_set_up(&lwip::g_netif);
+
+        // initialise UDP and TFTP
+        udpServerInit();
+        tftp::IAP_tftpd_init();            
     }
 
     void EthernetTasks()
@@ -371,7 +377,7 @@ namespace lwip
             tot_len = 60;
         }
 
-        //uint32_t crc = ethernet_frame_crc(tx_frame, tot_len); // unused? 
+        ethernet_frame_crc(tx_frame, tot_len); // originally stored: uint32_t crc = ethernet_frame_crc(tx_frame, tot_len);
 
         send_lwip(0, tx_frame, tot_len);
 
@@ -399,28 +405,28 @@ namespace lwip
         return ERR_OK;
     }
 
-    // uint32_t ethernet_frame_crc(const uint8_t *data, int length)
-    // {
-    //     uint32_t crc = 0xffffffff; /* Initial value. */
+    uint32_t ethernet_frame_crc(const uint8_t *data, int length)
+    {
+        uint32_t crc = 0xffffffff; /* Initial value. */
 
-    //     while (--length >= 0)
-    //     {
-    //         uint8_t current_octet = *data++;
+        while (--length >= 0)
+        {
+            uint8_t current_octet = *data++;
 
-    //         for (int bit = 8; --bit >= 0; current_octet >>= 1)
-    //         {
-    //             if ((crc ^ current_octet) & 1)
-    //             {
-    //                 crc >>= 1;
-    //                 crc ^= lwip::ethernet_polynomial_le;
-    //             }
-    //             else
-    //                 crc >>= 1;
-    //         }
-    //     }
+            for (int bit = 8; --bit >= 0; current_octet >>= 1)
+            {
+                if ((crc ^ current_octet) & 1)
+                {
+                    crc >>= 1;
+                    crc ^= lwip::ethernet_polynomial_le;
+                }
+                else
+                    crc >>= 1;
+            }
+        }
 
-    //     return ~crc;
-    // }
+        return ~crc;
+    }
 }
 
 namespace wiznet 
@@ -718,8 +724,8 @@ namespace tftp
             uint32_t address = Flash_Write_Address, remaining = 512;
             status = unlock_flash();
             while(remaining && status == 0) {
-                status = write_to_flash(FLASH_HALFWORD, address, *data++);
-                status = write_to_flash(FLASH_HALFWORD, address + 2, *data++);
+                status = write_to_flash_halfword(address, *data++);
+                status = write_to_flash_halfword(address + 2, *data++);
                 address += 4;
                 remaining -= 4;
             }
@@ -754,8 +760,8 @@ namespace tftp
         {
             IAP_tftp_cleanup_wr(upcb, args);
             pbuf_free(pkt_buf);
-            newJson = true;
-            printf("New JSON file uploaded\n");
+            new_flash_json = true;
+            printf("New JSON file detected, uploading\n");          
         }
         else
         {
@@ -793,9 +799,9 @@ namespace tftp
         /* set callback for receives on this UDP PCB (Protocol Control Block) */
         udp_recv(upcb, IAP_wrq_recv_callback, args);
 
-        total_count =0;
+        total_count = 0;
         if((unlock_flash()) == 0) {
-            mass_erase_flash_sector(HAL_Config::JSON_SECTOR);
+            mass_erase_flash_sector(HAL_Config::JSON_Sector);
         }
         lock_flash();        
 
