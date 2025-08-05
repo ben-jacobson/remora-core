@@ -798,7 +798,7 @@ namespace tftp
 
         total_count = 0;
         if((unlock_flash()) == 0) {
-            mass_erase_flash_sector(HAL_Config::JSON_Sector);
+            mass_erase_config_storage();
         }
         lock_flash();        
 

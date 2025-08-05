@@ -182,11 +182,14 @@ void Remora::run()
             printf("Checking new configuration file\n");
             if (configHandler->json_check_length_and_CRC() > 0)
             {
-                printf("Moving new config file to Flash storage\n");
-                configHandler->store_json_in_flash();
+                if (HAL_Config::JSON_upload_address != HAL_Config::JSON_storage_address) 
+                {
+                    printf("Moving new config file to Flash storage\n");
+                    configHandler->store_json_in_flash();  // allows for smaller config footprint. If stored in the same location, keep it there and we are done. 
+                }
 
                 // force a reset to load new JSON configuration
-                printf("Forcing reboot now...\n");
+                printf("Success. Forcing reboot now...\n");
                 pru_reboot();
             }
         }

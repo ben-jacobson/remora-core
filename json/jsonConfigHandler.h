@@ -19,7 +19,7 @@ typedef struct __attribute__((packed))
   uint32_t crc32;   		// crc32 of JSON
   uint32_t length;			// length in words for CRC calculation
   uint32_t jsonLength;  	// length in of JSON config in bytes
-  uint8_t padding[metadata_padding_len];		// make it an even 512 bytes, half kilobyte.
+  uint8_t padding[metadata_padding_len];		// make it an even 512 bytes, half kilobyte for alignment
 } json_metadata_t;
 
 class JsonConfigHandler {

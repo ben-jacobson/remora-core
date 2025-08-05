@@ -192,7 +192,7 @@ int8_t JsonConfigHandler::json_check_length_and_CRC(void)
     uint32_t crc32;
 
 	json_metadata_t* meta = (json_metadata_t*)HAL_Config::JSON_upload_address; 
-	uint32_t* json_content = (uint32_t*)(HAL_Config::JSON_upload_address + metadata_len);
+	//uint32_t* json_content = (uint32_t*)(HAL_Config::JSON_upload_address + metadata_len);
 
     uint32_t table[256];
     crc32::generate_table(table);
@@ -220,15 +220,20 @@ int8_t JsonConfigHandler::json_check_length_and_CRC(void)
 
 	// Compute CRC
     char* ptr = (char *)(HAL_Config::JSON_upload_address + metadata_len);
+
+    // for (int i = 0; i < meta->jsonLength; i++) {
+    //     printf("%c", *(ptr + i));
+    // }
+
     for (int i = 0; i < meta->jsonLength + padding; i++)
     {
         crc32 = crc32::update(table, crc32, ptr, 1);
         ptr++;
     }
 
-	printf("Length (words) = %d\n", meta->length);
-	printf("JSON length (bytes) = %d\n", meta->jsonLength);
-	printf("crc32 = %x\n", crc32);
+	printf("Length (words) = %d\n", (int)meta->length);
+	printf("JSON length (bytes) = %d\n", (int)meta->jsonLength);
+	printf("crc32 = %x\n", (unsigned int)crc32);
 
 	// Check CRC
 	if (crc32 != meta->crc32)
@@ -258,7 +263,7 @@ void JsonConfigHandler::store_json_in_flash(void)
 
 	// erase the old JSON config file
     printf("Erasing flash\n");
-	mass_erase_flash_sector(HAL_Config::JSON_Sector);
+    mass_erase_config_storage();
 
 	uint8_t status;
 
