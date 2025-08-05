@@ -42,6 +42,10 @@ public:
 	JsonArray getModules();
 	JsonObject getModuleConfig(const char* threadName, const char* moduleType);
 
+	#ifdef ETH_CTRL
+	static volatile bool JsonConfigHandler::new_flash_json;
+	#endif
+
 	int8_t json_check_length_and_CRC(void);
 	#ifdef ETH_CTRL
 	void store_json_in_flash(void);

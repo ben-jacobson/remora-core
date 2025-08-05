@@ -14,8 +14,6 @@
 
 #ifdef ETH_CTRL
 
-extern volatile bool new_flash_json;
-
 namespace network 
 {
     CommsInterface* ptr_eth_comms = nullptr;
@@ -576,7 +574,7 @@ namespace tftp
 {
     static uint32_t Flash_Write_Address;
     static struct udp_pcb *UDPpcb;
-    static uint32_t total_count=0;
+    static uint32_t total_count = 0;
 
     static void IAP_wrq_recv_callback(void *_args, struct udp_pcb *upcb, struct pbuf *pkt_buf,
                             const ip_addr_t *addr, u16_t port);
@@ -718,7 +716,6 @@ namespace tftp
             total_count += pkt_buf->len - TFTP_DATA_PKT_HDR_LEN;
 
             // Write received data in flash
-            
             uint8_t status;
             uint16_t *data = (uint16_t *)data_buffer;
             uint32_t address = Flash_Write_Address, remaining = 512;
@@ -760,7 +757,7 @@ namespace tftp
         {
             IAP_tftp_cleanup_wr(upcb, args);
             pbuf_free(pkt_buf);
-            new_flash_json = true;
+            JsonConfigHandler::new_flash_json = true;
             printf("New JSON file detected, uploading\n");          
         }
         else

@@ -4,7 +4,7 @@
 #include "crc32.h"
 
 #ifdef ETH_CTRL
-volatile bool new_flash_json = false;
+volatile bool JsonConfigHandler::new_flash_json = false;
 #endif
 
 JsonConfigHandler::JsonConfigHandler(Remora* _remora) :
@@ -192,7 +192,7 @@ int8_t JsonConfigHandler::json_check_length_and_CRC(void)
     uint32_t crc32;
 
 	json_metadata_t* meta = (json_metadata_t*)HAL_Config::JSON_upload_address; 
-	uint32_t* json = (uint32_t*)(HAL_Config::JSON_upload_address + metadata_len);
+	uint32_t* json_content = (uint32_t*)(HAL_Config::JSON_upload_address + metadata_len);
 
     uint32_t table[256];
     crc32::generate_table(table);
@@ -201,7 +201,7 @@ int8_t JsonConfigHandler::json_check_length_and_CRC(void)
 	// Check length is reasonable
 	if (meta->length > (HAL_Config::user_flash_end_address - HAL_Config::JSON_upload_address))
 	{
-		new_flash_json = false;
+		JsonConfigHandler::new_flash_json = false;
 		printf("JSON Config length incorrect\n");
 		return -1;
 	}
@@ -233,13 +233,13 @@ int8_t JsonConfigHandler::json_check_length_and_CRC(void)
 	// Check CRC
 	if (crc32 != meta->crc32)
 	{
-		new_flash_json = false;
+		JsonConfigHandler::new_flash_json = false;
 		printf("JSON Config file CRC incorrect\n");
 		return -1;
 	}
 
 	// JSON is OK, don't check it again
-	new_flash_json = false;
+	JsonConfigHandler::new_flash_json = false;
 	printf("JSON Config file received Ok\n");
 	return 1;
 }
@@ -279,7 +279,7 @@ void JsonConfigHandler::store_json_in_flash(void)
             status = write_to_flash_byte((HAL_Config::JSON_storage_address + 4 + i), *((uint8_t*)(HAL_Config::JSON_upload_address + metadata_len + i)));
         }
     }
-    
+
     lock_flash();
     printf("Data Copied\n");
 

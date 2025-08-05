@@ -7,8 +7,6 @@
 volatile txData_t txData;
 volatile rxData_t rxData;
 
-extern volatile bool new_flash_json;
-
 Remora::Remora(std::shared_ptr<CommsHandler> commsHandler,
                std::unique_ptr<pruTimer> baseTimer,
                std::unique_ptr<pruTimer> servoTimer,
@@ -179,7 +177,7 @@ void Remora::run()
         }
 
         #ifdef ETH_CTRL
-        if (new_flash_json)
+        if (JsonConfigHandler::new_flash_json)
         {
             printf("Checking new configuration file\n");
             if (configHandler->json_check_length_and_CRC() > 0)
