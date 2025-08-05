@@ -43,7 +43,7 @@ public:
 	JsonObject getModuleConfig(const char* threadName, const char* moduleType);
 
 	#ifdef ETH_CTRL
-	static volatile bool JsonConfigHandler::new_flash_json;
+	static volatile bool new_flash_json;
 	#endif
 
 	int8_t json_check_length_and_CRC(void);
