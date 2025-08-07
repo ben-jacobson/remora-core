@@ -9,7 +9,7 @@ To include these in your PlatformIO.ini project:
         W5500_Networking=file://Src/remora-core/drivers/W5500_Networking/W5500_Networking.zip ; notes that lib_extra_dirs was deprecated in PIO 6+
 
 2) Add to your Platformio.ini file a reference to the linker script. You may need to build an LS for your target. You can also set a new size for flash memory now that this is been allocated, recalculate this and enter the value for your specific target build
-    board_build.ldscript = LinkerScripts/STM32F446XX_ETHCOMMS_BL.ld ; linker script with JSON memory allocated
+    board_build.ldscript = LinkerScripts/STM32F446XX_ETHCOMMS_BL.ld ; linker script with JSON memory allocated for F4xx
     board_upload.maximum_size = 458752   ; For example this is 512K - (16K * 4). 2x 16KB sectors for bootloader, and 2x JSON config sectors - one for upload and the other for storage.  
 
 3) add the extra build flag to denote that you want ethernet control for your build:

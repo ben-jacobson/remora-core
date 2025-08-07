@@ -125,7 +125,7 @@ uint8_t JsonConfigHandler::readConfigFromFlash() {
     printf("\nLoading JSON configuration file from Flash memory\n");
 
     // read byte 0 to determine length to read
-    jsonLength = *(uint32_t*)(HAL_Config::JSON_storage_start_address + sizeof(json_metadata_t::crc32) + sizeof(json_metadata_t::length)); // length is in in words, we want length in bytes right after
+    jsonLength = *(uint32_t*)(HAL_Config::JSON_storage_start_address);
 
     if (jsonLength == 0xFFFFFFFF)
     {
@@ -144,7 +144,7 @@ uint8_t JsonConfigHandler::readConfigFromFlash() {
 
 		for (uint32_t i = 0; i < jsonLength; i++)
 		{
-            uint32_t json_config_addr = HAL_Config::JSON_storage_start_address + sizeof(json_metadata_t) + i;
+            uint32_t json_config_addr = HAL_Config::JSON_storage_start_address + sizeof(json_metadata_t::jsonLength) + i;
             jsonContent[i] = *reinterpret_cast<uint8_t*>(json_config_addr);
 		}
     }
