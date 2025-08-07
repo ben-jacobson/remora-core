@@ -103,11 +103,14 @@ Example ../remora-hal/hal_configuration.h file
 #include <cstdint>
 
 namespace HAL_Config {
-    constexpr std::uintptr_t JSON_storage_start_address           = 0x8060000;
-    constexpr std::uintptr_t JSON_storage_end_address           = JSON_storage_address + (128 * 1024);
-    constexpr std::uintptr_t JSON_upload_start_address            = JSON_storage_end_address + 1; 
-    constexpr std::uintptr_t JSON_upload_end_address            = JSON_upload_start_address + (128 * 1024) - 1; 
-    constexpr uint32_t JSON_Sector                          = FLASH_SECTOR_7;
+    constexpr std::uintptr_t JSON_upload_start_address            = 0x08008000; // upload area is second half of storage
+    constexpr std::uintptr_t JSON_upload_end_address            = JSON_upload_start_address + (16 * 1024); 
+
+    constexpr std::uintptr_t JSON_storage_start_address           = 0x0800C000;
+    constexpr std::uintptr_t JSON_storage_end_address           = JSON_storage_start_address + (16 * 1024);
+
+    constexpr uint32_t JSON_Config_Upload_Sector                          = FLASH_SECTOR_2;  // 16K in flash
+    constexpr uint32_t JSON_Config_Storage_Sector                          = FLASH_SECTOR_3;  // 16K in flash
 }
 #endif
 
