@@ -572,7 +572,7 @@ namespace wiznet
 
 namespace tftp 
 {
-    static uint32_t Flash_Write_Address;
+    static uint32_t Flash_Write_Address; // start with some offset, write it after first 32 bytes to make room for the metadata
     static struct udp_pcb *UDPpcb;
     static uint32_t total_count = 0;
 
@@ -718,7 +718,8 @@ namespace tftp
             // Write received data in flash
             uint8_t status;
             uint16_t *data = (uint16_t *)data_buffer;
-            uint32_t address = Flash_Write_Address, remaining = 512;
+            uint32_t address = Flash_Write_Address; 
+            uint32_t remaining = 512;
             status = unlock_flash();
             while(remaining && status == 0) {
                 status = write_to_flash_halfword(address, *data++);
@@ -729,7 +730,7 @@ namespace tftp
             lock_flash();
 
             // Increment the write address
-            Flash_Write_Address = Flash_Write_Address + 512;
+            Flash_Write_Address = Flash_Write_Address + 512;   
 
             /* update our block number to match the block number just received */
             args->block++;
@@ -737,7 +738,7 @@ namespace tftp
             (args->tot_bytes) += (pkt_buf->len - TFTP_DATA_PKT_HDR_LEN);
 
             /* This is a valid pkt but it has no data.  This would occur if the file being
-            written is an exact multiple of 512 bytes.  In this case, the args->block
+            written is an exact multiple of sizeof(json_metadata_t).  In this case, the args->block
             value must still be updated, but we can skip everything else.    */
         }
         else if (IAP_tftp_extract_block((char*)pkt_buf->payload) == (args->block + 1))
@@ -798,11 +799,11 @@ namespace tftp
 
         total_count = 0;
         if((unlock_flash()) == 0) {
-            mass_erase_config_storage();
+            mass_erase_upload_storage();
         }
         lock_flash();        
 
-        Flash_Write_Address = HAL_Config::JSON_upload_address;
+        Flash_Write_Address = HAL_Config::JSON_upload_start_address;
 
         /* initiate the write transaction by sending the first ack */
         IAP_tftp_send_ack_packet(upcb, to, to_port, args->block);

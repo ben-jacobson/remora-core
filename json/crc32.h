@@ -27,7 +27,9 @@ struct crc32
 
 	static uint32_t update(uint32_t (&table)[256], uint32_t initial, const void* buf, size_t len)
 	{
-		uint32_t c = initial ^ 0xFFFFFFFF;
+		//uint32_t c = initial ^ 0xFFFFFFFF;
+		uint32_t c = initial;
+
 		const uint8_t* u = static_cast<const uint8_t*>(buf);
 		for (size_t i = 0; i < len; ++i) 
 		{

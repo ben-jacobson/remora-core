@@ -11,7 +11,7 @@
 
 class Remora; //forward declaration
 
-constexpr uint16_t metadata_len = 512;
+constexpr uint16_t metadata_len = 512; // bytes
 constexpr uint16_t metadata_padding_len = metadata_len - (sizeof(uint32_t) * 3);
 
 typedef struct __attribute__((packed))
@@ -19,7 +19,7 @@ typedef struct __attribute__((packed))
   uint32_t crc32;   		// crc32 of JSON
   uint32_t length;			// length in words for CRC calculation
   uint32_t jsonLength;  	// length in of JSON config in bytes
-  uint8_t padding[metadata_padding_len];		// make it an even 512 bytes, half kilobyte for alignment
+  uint8_t padding[metadata_padding_len];		// ensure struct size = metadata_len in bytes, as this is how TFTP is loading in packets. 
 } json_metadata_t;
 
 class JsonConfigHandler {

@@ -125,7 +125,7 @@ uint8_t JsonConfigHandler::readConfigFromFlash() {
     printf("\nLoading JSON configuration file from Flash memory\n");
 
     // read byte 0 to determine length to read
-    jsonLength = *(uint32_t*)(HAL_Config::JSON_storage_address);
+    jsonLength = *(uint32_t*)(HAL_Config::JSON_storage_start_address + sizeof(json_metadata_t::crc32) + sizeof(json_metadata_t::length)); // length is in in words, we want length in bytes right after
 
     if (jsonLength == 0xFFFFFFFF)
     {
@@ -136,18 +136,20 @@ uint8_t JsonConfigHandler::readConfigFromFlash() {
 		{
 			jsonContent.push_back(Config::defaultConfig[i]);
 		}
+        return makeRemoraStatus(RemoraErrorSource::NO_ERROR, RemoraErrorCode::CONFIG_LOADED_DEFAULT);
     }
     else
     {
-		jsonContent.resize(jsonLength);
+        jsonContent.reserve(jsonLength);
 
 		for (uint32_t i = 0; i < jsonLength; i++)
 		{
-			jsonContent.push_back(*(uint8_t*)(HAL_Config::JSON_storage_address + 4 + i));
+            uint32_t json_config_addr = HAL_Config::JSON_storage_start_address + sizeof(json_metadata_t) + i;
+            jsonContent[i] = *reinterpret_cast<uint8_t*>(json_config_addr);
 		}
     }
 
-	//printf("\n%s\n\n", jsonContent.c_str());
+	//printf("JSON Content: \n%s\n\n", jsonContent.c_str());
     return makeRemoraStatus(RemoraErrorSource::NO_ERROR, RemoraErrorCode::NO_ERROR);
 }
 
@@ -170,11 +172,11 @@ uint8_t JsonConfigHandler::parseJson() {
             return makeRemoraStatus(RemoraErrorSource::NO_ERROR, RemoraErrorCode::NO_ERROR);
 
         case DeserializationError::InvalidInput:
-            printf("Invalid input!\n");
+            printf("Invalid input!\n\n");
             return makeRemoraStatus(RemoraErrorSource::JSON_CONFIG, RemoraErrorCode::CONFIG_INVALID_INPUT, true);
 
         case DeserializationError::NoMemory:
-            printf("Not enough memory\\nn");
+            printf("Not enough memory\n\n");
             return makeRemoraStatus(RemoraErrorSource::JSON_CONFIG, RemoraErrorCode::CONFIG_NO_MEMORY, true);
 
         default:
@@ -189,17 +191,14 @@ uint8_t JsonConfigHandler::parseJson() {
 
 int8_t JsonConfigHandler::json_check_length_and_CRC(void) 
 {
-    uint32_t crc32;
-
-	json_metadata_t* meta = (json_metadata_t*)HAL_Config::JSON_upload_address; 
-	//uint32_t* json_content = (uint32_t*)(HAL_Config::JSON_upload_address + metadata_len);
+	json_metadata_t* meta = (json_metadata_t*)HAL_Config::JSON_upload_start_address;
 
     uint32_t table[256];
     crc32::generate_table(table);
     int mod, padding;
 
 	// Check length is reasonable
-	if (meta->length > (HAL_Config::user_flash_end_address - HAL_Config::JSON_upload_address))
+	if (meta->length > (HAL_Config::JSON_upload_end_address - HAL_Config::JSON_upload_start_address))
 	{
 		JsonConfigHandler::new_flash_json = false;
 		printf("JSON Config length incorrect\n");
@@ -219,24 +218,16 @@ int8_t JsonConfigHandler::json_check_length_and_CRC(void)
     printf("mod = %d, padding = %d\n", mod, padding);
 
 	// Compute CRC
-    char* ptr = (char *)(HAL_Config::JSON_upload_address + metadata_len);
-
-    // for (int i = 0; i < meta->jsonLength; i++) {
-    //     printf("%c", *(ptr + i));
-    // }
-
-    for (int i = 0; i < meta->jsonLength + padding; i++)
-    {
-        crc32 = crc32::update(table, crc32, ptr, 1);
-        ptr++;
-    }
+    char* json_upload_data_ptr = (char *)(HAL_Config::JSON_upload_start_address + metadata_len);
+    uint32_t computed_crc32 = crc32::update(table, 0xFFFFFFFF, json_upload_data_ptr, meta->jsonLength + padding);
 
 	printf("Length (words) = %d\n", (int)meta->length);
 	printf("JSON length (bytes) = %d\n", (int)meta->jsonLength);
-	printf("crc32 = %x\n", (unsigned int)crc32);
+	printf("Expected crc32 = 0x%x\n", (unsigned int)meta->crc32);
+	printf("Computed crc32 = 0x%x\n", (unsigned int)computed_crc32);
 
 	// Check CRC
-	if (crc32 != meta->crc32)
+	if (computed_crc32 != meta->crc32)
 	{
 		JsonConfigHandler::new_flash_json = false;
 		printf("JSON Config file CRC incorrect\n");
@@ -253,7 +244,7 @@ int8_t JsonConfigHandler::json_check_length_and_CRC(void)
 void JsonConfigHandler::store_json_in_flash(void)
 {
 	uint32_t i = 0;
-	json_metadata_t* meta = (json_metadata_t*)HAL_Config::JSON_upload_address;  // unsure if this going to work with how we have split the sector in two. 
+	json_metadata_t* meta = (json_metadata_t*)HAL_Config::JSON_upload_start_address;  // unsure if this going to work with how we have split the sector in two. 
     
 	uint16_t jsonLength = meta->jsonLength;
 
@@ -262,16 +253,15 @@ void JsonConfigHandler::store_json_in_flash(void)
     unlock_flash();
 
 	// erase the old JSON config file
-    printf("Erasing flash\n");
+    printf("Erasing storage area of flash\n");
     mass_erase_config_storage();
-
 	uint8_t status;
 
 	// store the length of the file in the 0th byte
     printf("Write file length\n");
-	status = write_to_flash_word(HAL_Config::JSON_storage_address, jsonLength);
+	status = write_to_flash_word(HAL_Config::JSON_storage_start_address, jsonLength);
 
-    jsonLength = *(uint32_t*)(HAL_Config::JSON_storage_address);
+    jsonLength = *(uint32_t*)(HAL_Config::JSON_storage_start_address);
     printf("Written JSON Length %d\n", jsonLength);
 
     jsonLength = meta->jsonLength;
@@ -281,7 +271,8 @@ void JsonConfigHandler::store_json_in_flash(void)
     {
         if (status == 0)
         {
-            status = write_to_flash_byte((HAL_Config::JSON_storage_address + 4 + i), *((uint8_t*)(HAL_Config::JSON_upload_address + metadata_len + i)));
+            //status = write_to_flash_byte((HAL_Config::JSON_storage_start_address + i), *((uint8_t*)(HAL_Config::JSON_upload_start_address + i)));
+            status = write_to_flash_byte((HAL_Config::JSON_storage_start_address + 4 + i), *((uint8_t*)(HAL_Config::JSON_upload_start_address + metadata_len + i)));
         }
     }
 
