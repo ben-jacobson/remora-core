@@ -1,22 +1,40 @@
 /*
-
 W5500_Networking.h
 
-Enables use of W5500 networking and ethernet control to your Remora board. This directory provides slightly modified versions of LWIP and Wiznet W5500 libraries
-originally written by 
+Enables use of W5500 networking and ethernet control to your Remora board. This directory provides slightly modified versions of LWIP and Wiznet W5500 libraries. Credit for these libs are found in the folders as is. 
 
 To include these in your PlatformIO.ini project: 
 1) Ensure that your lib file is discoverable in the platformio.ini file
     lib_deps = 
         W5500_Networking=file://Src/remora-core/drivers/W5500_Networking/W5500_Networking.zip ; notes that lib_extra_dirs was deprecated in PIO 6+
 
-2) add the extra build flag to denote that you want ethernet control for your build:
+2) Add to your Platformio.ini file a reference to the linker script. You may need to build an LS for your target. You can also set a new size for flash memory now that this is been allocated, recalculate this and enter the value for your specific target build
+    board_build.ldscript = LinkerScripts/STM32F446XX_ETHCOMMS_BL.ld ; linker script with JSON memory allocated
+    board_upload.maximum_size = 458752   ; For example this is 512K - (16K * 4). 2x 16KB sectors for bootloader, and 2x JSON config sectors - one for upload and the other for storage.  
+
+3) add the extra build flag to denote that you want ethernet control for your build:
     build_flags = 
         -D ETH_CTRL=1
+        -D _WIZCHIP_=5500
+        -D WIZ_RST="\"PB_5"\" ; replace these with the GPIO and SPI peripheral pins of your board
+        -D SPI_CS="\"PB_6"\"
+        -D SPI_CLK="\"PA_5"\"
+        -D SPI_MISO="\"PA_6"\"
+        -D SPI_MOSI="\"PA_7"\"
 
-Without this build flag, this header and the cpp file have been commented out to avoid creating errors when the compiler tries looking for the library files.
+To use this with LinuxCNC, you will need the Ethernet component:
+Compile the component using halcompile
+```
+sudo halcompile --install remora-eth-3.0.c
+```
 
-The following namespaces are used for encapsulation, for composability and reusability. 
+Configs are loaded via tftpy
+```
+pip3 install tftpy # If not using virtualenv you may get an error about breaking system packages, use the --break-system-packages flag if needed
+python3 upload_config.py NucleoF411RE-Config.txt
+```
+
+Without these build flags, this header and the cpp file have been commented out to avoid creating errors when the compiler tries looking for the library files.
 */
 
 
