@@ -49,19 +49,28 @@ void JsonConfigHandler::updateThreadFreq() {
 
     JsonArray Threads = doc["Threads"];
 
-    // create objects from JSON data
-    for (JsonArray::iterator it=Threads.begin(); it!=Threads.end(); ++it) {
-        thread = *it;
-        const char* configor = thread["Thread"];
-        uint32_t    freq = thread["Frequency"];
-        if (!strcmp(configor,"Base")) {
-        	printf("Updating thread frequency - Setting BASE thread frequency to %lu\n", freq);
-            remoraInstance->setBaseFreq(freq);
+    if (!Threads.isNull()) 
+    {
+        // create objects from JSON data if set in config
+        for (JsonArray::iterator it=Threads.begin(); it!=Threads.end(); ++it) 
+        {
+            thread = *it;
+            const char* configor = thread["Thread"];
+            uint32_t    freq = thread["Frequency"];
+            if (!strcmp(configor,"Base")) {
+                printf("Updating thread frequency - Setting BASE thread frequency to %lu\n", freq);
+                remoraInstance->setBaseFreq(freq);
+            }
+            else if (!strcmp(configor,"Servo")) {
+                printf("Updating thread frequency - Setting SERVO thread frequency to %lu\n", freq);
+                remoraInstance->setServoFreq(freq);
+            }
         }
-        else if (!strcmp(configor,"Servo")) {
-            printf("Updating thread frequency - Setting SERVO thread frequency to %lu\n", freq);
-            remoraInstance->setServoFreq(freq);
-        }
+    }
+    else 
+    {
+        printf("BASE thread frequency set to: %lu\n", remoraInstance->getBaseFreq());
+        printf("SERVO thread frequency set to: %lu\n", remoraInstance->getServoFreq());
     }
 }
 

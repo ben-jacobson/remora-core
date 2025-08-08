@@ -80,8 +80,10 @@ public:
 
     void run();
 	
-    void setBaseFreq(uint32_t freq) { baseFreq = freq; }
-    void setServoFreq(uint32_t freq) { servoFreq = freq; }
+    void setBaseFreq(uint32_t freq) { baseFreq = freq; /* baseThread->setFrequency(freq); */}        // these setters and getters works at init during JSON Config, but not during run time, could use a refactor. Would require a new setter method in pruThread::
+    void setServoFreq(uint32_t freq) { servoFreq = freq; /* servoThread->setFrequency(freq); */}
+    uint32_t getBaseFreq(void) { return baseFreq; /* return baseThread->getFrequency();*/}
+    uint32_t getServoFreq(void) { return servoFreq; /* return servoThread->getFrequency(); */}    
     void setStatus(uint8_t status) { remoraStatus = status; }
     uint8_t getStatus() { return remoraStatus; }
 
