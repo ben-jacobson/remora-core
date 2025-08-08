@@ -803,7 +803,7 @@ namespace tftp
         }
         lock_flash();        
 
-        Flash_Write_Address = HAL_Config::JSON_upload_start_address;
+        Flash_Write_Address = Platform_Config::JSON_upload_start_address;
 
         /* initiate the write transaction by sending the first ack */
         IAP_tftp_send_ack_packet(upcb, to, to_port, args->block);

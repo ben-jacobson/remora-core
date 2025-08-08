@@ -2,7 +2,7 @@
 #define CONFIGURATION_H
 
 #include <stdio.h>
-#include "../remora-hal/hal_configuration.h" // See note below for how to build this file
+#include "../remora-hal/platform_configuration.h" // See note below for how to build this file
 
 namespace Config {
     constexpr uint32_t pruBaseFreq = 40000;        // PRU Base thread ISR update frequency (hz)
@@ -69,40 +69,41 @@ namespace Config {
         0x5D, 0x0A, 0x7D
     };
 
-    // Default file config: 
 
-    // {
-    //     "Board": "Remora",
-    //     "Modules":[
-    //     {
-    //     "Thread": "Servo",
-    //     "Type": "Blink",
-    //         "Comment":			"Blinky",
-    //         "Pin":				"PB_0",
-    //         "Frequency": 		4
-    //     }
-    //     ]
-    // }    
+    /*  Default file config: 
+    {
+        "Board": "Remora",
+        "Modules":[
+        {
+        "Thread": "Servo",
+        "Type": "Blink",
+            "Comment":			"Blinky",
+            "Pin":				"PB_0",
+            "Frequency": 		4
+        }
+        ]
+    }   
+    */ 
 }
 
 /* 
-Explanation of HAL_configuration file:
+Explanation of Platform_Configuration file:
 
 Some of the hardware specific implementation details cannot be set at the abstract Remora-Core level.
 They need to be implemented depending on your specific Hardware requirements. 
 For example the memory locations of where the JSON file is stored in FLASH for ethernet builds 
 
-Example ../remora-hal/hal_configuration.h file
+Example ../remora-hal/platform_configuration.h file
 -------------------------------
 
-#ifndef HAL_CONFIGURATION_H
-#define HAL_CONFIGURATION_H
+#ifndef PLATFORM_CONFIGURATION_H
+#define PLATFORM_CONFIGURATION_H
 
 #include "stm32f4xx.h"      // Example of STM build, replace with your vendors HAL header file
 
 #include <cstdint>
 
-namespace HAL_Config {
+namespace Platform_Config {
     constexpr std::uintptr_t JSON_upload_start_address            = 0x08008000; // upload area is second half of storage
     constexpr std::uintptr_t JSON_upload_end_address            = JSON_upload_start_address + (16 * 1024); 
 
