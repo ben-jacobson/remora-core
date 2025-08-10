@@ -146,13 +146,12 @@ namespace network
         uint16_t txlen = 0;
         struct pbuf *txBuf;
 
-        // The old implementation used a ping pong buffer, but this was used throughout the core, which ours doesnt
-        // //received data from host needs to go into the inactive buffer
-        // rxData_t* rxBuffer = getAltRxBuffer(&rxPingPongBuffer);
-        // //data sent to host needs to come from the active buffer
-        // txData_t* txBuffer = getCurrentTxBuffer(&txPingPongBuffer);
+        /*
+        The pre Remora-core port used a ping pong buffer, but this was used throughout the core, which ours doesnt have.
+        instead we'll implement parts of a ring buffer. This doesn't mean the PRU will handle it, just detect it 
+        because the memcpy into the RX Buffer still works on the latest packet. 
+        */ 
 
-        // instead we'll implement parts of a ring buffer. This doesn't mean the PRU will handle it, just detect it because the memcpy into the RX Buffer still works on the latest packet. 
         uint8_t next_head = (head + 1) & (RING_BUFFER_SIZE - 1);
 
         if (next_head == tail) 
@@ -167,46 +166,22 @@ namespace network
             //memcpy((void *)ring_buffer[head].data, p->payload, std::min((size_t)p->len, sizeof(rxData_t))); // ensures proper alignment to size of rxData_t which is alinged to 32 bytes
             head = next_head;
         }
-
-        // Old implementation would then copy into the current buffer used by the ping pong at the time
-        //memcpy(&rxBuffer->rxBuffer, p->payload, p->len);
         
         // ours will just process the latest entry. Again this doesn't handle the lost packet, parts of the ring buffer is just there to detect it. The PRU will always read the latest packet
-        assert(((uintptr_t)network::ptr_eth_comms->ptrRxData % alignof(rxData_t)) == 0);                   // rxBuffer is aligned to 32bits. but the buffer is an array of 8 bits, could easily end up in a situation where other platform builds don't respect this
-        memcpy((void *)network::ptr_eth_comms->ptrRxData, p->payload, std::min<size_t>(p->len, sizeof(rxData_t))); // this just updates the first four bytes, the header. I'm tempted to just manually copy this with four lines. 
+        assert(((uintptr_t)network::ptr_eth_comms->ptrRxData % alignof(rxData_t)) == 0);                   // rxBuffer is aligned to 32bits. Could easily end up in a situation where other platform builds don't respect this
+        memcpy((void *)network::ptr_eth_comms->ptrRxData, p->payload, p->len); 
 
         //received a PRU request
         if (network::ptr_eth_comms->ptrRxData->header == Config::pruRead)
-        {          
-            //if it is a read, need to swap the TX buffer over but the RX buffer needs to remain unchanged.
-            //feedback data will now go into the alternate buffer
-            //don't need to wait for the servo thread.
-            //disable interrupts and swap the buffers.
-
-            //__disable_irq();
-            //swapTxBuffers(&txPingPongBuffer);
-            //__enable_irq();
-            
+        {       
             network::ptr_eth_comms->ptrTxData->header = Config::pruData;
             txlen = Config::dataBuffSize;
-            //comms->dataReceived();
             network::ptr_eth_comms->flag_new_data();      
         }
         else if (network::ptr_eth_comms->ptrRxData->header == Config::pruWrite)
         {
-            //if it is a write, then both the RX and TX buffers need to be changed.
-            //don't need to wait for the servo thread.
-            //disable interrupts and swap the buffers.
-            //feedback data will now go into the alternate buffer
-            // __disable_irq();
-            // swapTxBuffers(&txPingPongBuffer);
-            // //frequency command will now come from the new data
-            // swapRxBuffers(&rxPingPongBuffer);
-            // __enable_irq();
-
             network::ptr_eth_comms->ptrTxData->header = Config::pruAcknowledge;
             txlen = Config::dataBuffSize;   
-            //comms->dataReceived();       
             network::ptr_eth_comms->flag_new_data();      
         }	
 
