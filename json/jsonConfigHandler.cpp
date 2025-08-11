@@ -3,9 +3,7 @@
 #include "../remora.h"
 #include "crc32.h"
 
-#ifdef ETH_CTRL
 volatile bool JsonConfigHandler::new_flash_json = false;
-#endif
 
 JsonConfigHandler::JsonConfigHandler(Remora* _remora) :
 	remoraInstance(_remora)
