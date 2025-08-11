@@ -103,15 +103,24 @@ Example ../remora-hal/platform_configuration.h file
 
 #include <cstdint>
 
+extern "C" {
+    extern const uint8_t _ls_json_upload_start;
+    extern const uint8_t _ls_json_upload_end;
+    extern const uint8_t _ls_json_storage_start;
+    extern const uint8_t _ls_json_storage_end;
+    extern const uint8_t _ls_json_upload_sector;
+    extern const uint8_t _ls_json_storage_sector;     
+}
+
 namespace Platform_Config {
-    constexpr std::uintptr_t JSON_upload_start_address            = 0x08008000; // upload area is second half of storage
-    constexpr std::uintptr_t JSON_upload_end_address            = JSON_upload_start_address + (16 * 1024); 
+    const std::uintptr_t JSON_upload_start_address  = reinterpret_cast<std::uintptr_t>(&_ls_json_upload_start);  // in this example, these can be pulled from the LinkerScript, which may or may not be feasible in your platform choice. 
+    const std::uintptr_t JSON_upload_end_address    = reinterpret_cast<std::uintptr_t>(&_ls_json_upload_end);
 
-    constexpr std::uintptr_t JSON_storage_start_address           = 0x0800C000;
-    constexpr std::uintptr_t JSON_storage_end_address           = JSON_storage_start_address + (16 * 1024);
+    const std::uintptr_t JSON_storage_start_address = reinterpret_cast<std::uintptr_t>(&_ls_json_storage_start);
+    const std::uintptr_t JSON_storage_end_address   = reinterpret_cast<std::uintptr_t>(&_ls_json_storage_end);
 
-    constexpr uint32_t JSON_Config_Upload_Sector                          = FLASH_SECTOR_2;  // 16K in flash
-    constexpr uint32_t JSON_Config_Storage_Sector                          = FLASH_SECTOR_3;  // 16K in flash
+    const uint32_t JSON_Config_Upload_Sector        = static_cast<uint8_t>(reinterpret_cast<uintptr_t>(&_ls_json_upload_sector));      // this is a bit finnicky beacuse the linker scripts store numeric addresses only, not values
+    const uint32_t JSON_Config_Storage_Sector       = static_cast<uint8_t>(reinterpret_cast<uintptr_t>(&_ls_json_storage_sector));     // also the need for 32 bit integer here to store a value from 0-8 is deliberate....
 }
 #endif
 

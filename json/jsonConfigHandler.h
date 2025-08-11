@@ -37,14 +37,12 @@ private:
 	uint8_t parseJson();
 
 public:
+	static volatile bool new_flash_json;
+
 	JsonConfigHandler(Remora* _remora);
 	void updateThreadFreq();
 	JsonArray getModules();
-	JsonObject getModuleConfig(const char* threadName, const char* moduleType);
-
-	#ifdef ETH_CTRL
-	static volatile bool new_flash_json;
-	#endif
+	JsonObject getModuleConfig(const char* threadName, const char* moduleType);	
 
 	int8_t json_check_length_and_CRC(void);
 	#ifdef ETH_CTRL

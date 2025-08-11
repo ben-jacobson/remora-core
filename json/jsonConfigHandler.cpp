@@ -44,7 +44,6 @@ uint8_t JsonConfigHandler::loadConfiguration() {
     return status;
 }
 
-
 void JsonConfigHandler::updateThreadFreq() {
 
     JsonArray Threads = doc["Threads"];
