@@ -88,11 +88,17 @@ uint8_t JsonConfigHandler::readConfigFromSD() {
 
     // Try to mount the file system
     printf("Mounting the file system... \n");
-    if(f_mount(&SDFatFS, (TCHAR const*)SDPath, 0) != FR_OK)
+    if(f_mount(&SDFatFS, (TCHAR const*)SDPath, 1) != FR_OK)
 	{
-    	printf("Failed to mount SD card\n\r");
-    	return makeRemoraStatus(RemoraErrorSource::JSON_CONFIG, RemoraErrorCode::SD_MOUNT_FAILED, true);
-	}
+    	printf("Failed to mount SD card\n");
+    	printf("Loading default configuration\n\n");
+
+		for (uint32_t i = 0; i < sizeof(Config::defaultConfig); i++)
+		{
+			jsonContent.push_back(Config::defaultConfig[i]);
+		}
+        return makeRemoraStatus(RemoraErrorSource::NO_ERROR, RemoraErrorCode::CONFIG_LOADED_DEFAULT);
+    }
 
     //Open file for reading
     if(f_open(&SDFile, filename, FA_READ) != FR_OK)
