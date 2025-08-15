@@ -18,7 +18,7 @@ namespace Config {
     constexpr uint32_t variables = 6;              // Number of command values
 
     #ifdef ETH_CTRL
-    constexpr uint32_t pruData = 0x64617461;       // "dat_" SPI payload for remora-eth-3.0 component
+    constexpr uint32_t pruData = 0x64617461;       // "data" SPI payload for remora-eth-3.0 component
     #else
     constexpr uint32_t pruData = 0x64617400;       // "dat_" SPI payload for latest remora-core SPI component
     #endif
