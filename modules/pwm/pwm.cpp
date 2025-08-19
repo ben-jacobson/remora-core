@@ -7,7 +7,7 @@
 ************************************************************************/
 std::shared_ptr<Module> PWM::create(const JsonObject& config, Remora* instance)
 {
-    PWM* new_pwm;
+    //PWM* new_pwm;
     volatile float*     variable_pointers[Config::variables];
 
     int sp = config["SP[i]"];  // when reading this value off the rx buffer, it will return the duty cycle.  
@@ -54,88 +54,88 @@ std::shared_ptr<Module> PWM::create(const JsonObject& config, Remora* instance)
                 METHOD DEFINITIONS
 ************************************************************************/
 
-PWM::PWM(volatile float &ptrPwmPeriod, volatile float &ptrPwmPulseWidth, bool variable_freq, int fixed_period_us, int pwmMax, std::string pin):
-    ptrPwmPeriod(&ptrPwmPeriod),
-    variable_freq(variable_freq),
-    ptrPwmPulseWidth(&ptrPwmPulseWidth),
-    pwmMax(pwmMax),
-    pin(pin)
+PWM::PWM(volatile float &_ptrPwmPeriod, volatile float &_ptrPwmPulseWidth, bool _variable_freq, int _fixed_period_us, int _pwmMax, std::string _pin):
+    ptrPwmPeriod(&_ptrPwmPeriod),
+    variable_freq(_variable_freq),
+    ptrPwmPulseWidth(&_ptrPwmPulseWidth),
+    pwmMax(_pwmMax),
+    pin(_pin)
 {
-    printf("Creating variable frequency Hardware PWM at pin %s\n", this->pin.c_str());
+    printf("Creating variable frequency Hardware PWM at pin %s\n", pin.c_str());
 
     // set initial period and pulse width
-    if (this->variable_freq == true)
+    if (variable_freq == true)
     {
-        this->pwmPeriod_us = *(this->ptrPwmPeriod);
+        pwmPeriod_us = *ptrPwmPeriod;
     }
     else 
     {
-        this->pwmPeriod_us = fixed_period_us;    
+        pwmPeriod_us = _fixed_period_us;    
     }
 
-    if (this->pwmPeriod_us < 1)
+    if (pwmPeriod_us < 1)
     {
-        this->pwmPeriod_us = DEFAULT_PWM_PERIOD;
+        pwmPeriod_us = DEFAULT_PWM_PERIOD;
     }
 
-    this->pwmPulseWidth = *(this->ptrPwmPulseWidth);
-    this->pwmPulseWidth_us = (this->pwmPeriod_us * this->pwmPulseWidth) / 100.0;
+    pwmPulseWidth = *ptrPwmPulseWidth;
+    pwmPulseWidth_us = (pwmPeriod_us * pwmPulseWidth) / 100.0;
 
     setPwmMax(pwmMax);
     
-    hardware_PWM = new HardwarePWM(this->pwmPeriod_us, this->pwmPulseWidth_us, this->pin); 
+    hardware_PWM = new HardwarePWM(pwmPeriod_us, pwmPulseWidth_us, pin); 
 }
 
 
 float PWM::getPwmPeriod(void) { return pwmPeriod_us; }
 float PWM::getPwmPulseWidth(void) { return pwmPulseWidth; }
 int PWM::getPwmPulseWidth_us(void) { return pwmPulseWidth_us; }
-void PWM::setPwmMax(int pwmMax) { this->pwmMax = pwmMax; }
+void PWM::setPwmMax(int pwmMax) { pwmMax = pwmMax; }
 
 void PWM::update()
 {
-    if (this->variable_freq == true) 
+    if (variable_freq == true) 
     {    
-        if (*(this->ptrPwmPeriod) != 0 && (*(this->ptrPwmPeriod) != this->pwmPeriod_us))
+        if (*(ptrPwmPeriod) != 0 && (*(ptrPwmPeriod) != pwmPeriod_us))
         {
             // PWM period has changed
-            this->pwmPeriod_us = *(this->ptrPwmPeriod);
-            this->hardware_PWM->change_period(this->pwmPeriod_us);
+            pwmPeriod_us = *(ptrPwmPeriod);
+            hardware_PWM->change_period(pwmPeriod_us);
 
             // force pulse width update by triggering the next if block.
-            this->pwmPulseWidth = 0;
+            pwmPulseWidth = 0;
         }
     }
 
-    if (*(this->ptrPwmPulseWidth) != this->pwmPulseWidth)
+    if (*(ptrPwmPulseWidth) != pwmPulseWidth)
     {
         // PWM duty has changed
-        this->pwmPulseWidth = *(this->ptrPwmPulseWidth);
+        pwmPulseWidth = *(ptrPwmPulseWidth);
 
         // clamp the percentage in case LinuxCNC sends something other than 0-100%
-        if (this->pwmPulseWidth <= 0) 
+        if (pwmPulseWidth <= 0) 
         {
-            this->pwmPulseWidth = 0;
+            pwmPulseWidth = 0;
         }
-        if (this->pwmPulseWidth > 100)
+        if (pwmPulseWidth > 100)
         {
-            this->pwmPulseWidth = 100;
+            pwmPulseWidth = 100;
         }
 
         // Convert duty cycle % to us and update in hardware. 
         // First check if the the duty cycle has exceeded PWM Max 1-256, and substitute the value if so.
-        // this->pwmPulseWidth and this->ptrPwmPulseWidth need to keep their values intact or else update method will run continuously.
+        // pwmPulseWidth and ptrPwmPulseWidth need to keep their values intact or else update method will run continuously.
 
-        if (this->pwmMax > 0 && (this->pwmPulseWidth / 100) * PWMMAX > this->pwmMax)
+        if (pwmMax > 0 && (pwmPulseWidth / 100) * PWMMAX > pwmMax)
         {
-            int capped_pwm = (this->pwmMax * 100) / PWMMAX;
-            this->pwmPulseWidth_us = (this->pwmPeriod_us * capped_pwm) / 100.0;
+            int capped_pwm = (pwmMax * 100) / PWMMAX;
+            pwmPulseWidth_us = (pwmPeriod_us * capped_pwm) / 100.0;
         }
         else 
         {
-            this->pwmPulseWidth_us = (this->pwmPeriod_us * this->pwmPulseWidth) / 100.0;
+            pwmPulseWidth_us = (pwmPeriod_us * pwmPulseWidth) / 100.0;
         }
-        this->hardware_PWM->change_pulsewidth(this->pwmPulseWidth_us);
+        hardware_PWM->change_pulsewidth(pwmPulseWidth_us);
     } 
 }
 
