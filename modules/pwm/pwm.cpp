@@ -79,17 +79,17 @@ PWM::PWM(volatile float &_ptrPwmPeriod, volatile float &_ptrPwmPulseWidth, bool 
     }
 
     pwmPulseWidth = *ptrPwmPulseWidth;
-    pwmPulseWidth_us = (pwmPeriod_us * pwmPulseWidth) / 100.0;
+    //pwmPulseWidth_us = (pwmPeriod_us * pwmPulseWidth) / 100.0;
 
     setPwmMax(pwmMax);
     
-    hardware_PWM = new HardwarePWM(pwmPeriod_us, pwmPulseWidth_us, pin); 
+    hardware_PWM = new HardwarePWM(pwmPeriod_us, pwmPulseWidth, pin); 
 }
 
 
-float PWM::getPwmPeriod(void) { return pwmPeriod_us; }
-float PWM::getPwmPulseWidth(void) { return pwmPulseWidth; }
-int PWM::getPwmPulseWidth_us(void) { return pwmPulseWidth_us; }
+//float PWM::getPwmPeriod(void) { return pwmPeriod_us; }
+//float PWM::getPwmPulseWidth(void) { return pwmPulseWidth; }
+//int PWM::getPwmPulseWidth_us(void) { return pwmPulseWidth_us; }
 void PWM::setPwmMax(int pwmMax) { pwmMax = pwmMax; }
 
 void PWM::update()
@@ -101,9 +101,7 @@ void PWM::update()
             // PWM period has changed
             pwmPeriod_us = *(ptrPwmPeriod);
             hardware_PWM->change_period(pwmPeriod_us);
-
-            // force pulse width update by triggering the next if block.
-            pwmPulseWidth = 0;
+            recalculate_pulsewidth();
         }
     }
 
@@ -111,33 +109,36 @@ void PWM::update()
     {
         // PWM duty has changed
         pwmPulseWidth = *(ptrPwmPulseWidth);
-
-        // clamp the percentage in case LinuxCNC sends something other than 0-100%
-        if (pwmPulseWidth <= 0) 
-        {
-            pwmPulseWidth = 0;
-        }
-        if (pwmPulseWidth > 100)
-        {
-            pwmPulseWidth = 100;
-        }
-
-        // Convert duty cycle % to us and update in hardware. 
-        // First check if the the duty cycle has exceeded PWM Max 1-256, and substitute the value if so.
-        // pwmPulseWidth and ptrPwmPulseWidth need to keep their values intact or else update method will run continuously.
-
-        if (pwmMax > 0 && (pwmPulseWidth / 100) * PWMMAX > pwmMax)
-        {
-            int capped_pwm = (pwmMax * 100) / PWMMAX;
-            pwmPulseWidth_us = (pwmPeriod_us * capped_pwm) / 100.0;
-        }
-        else 
-        {
-            pwmPulseWidth_us = (pwmPeriod_us * pwmPulseWidth) / 100.0;
-        }
-        hardware_PWM->change_pulsewidth(pwmPulseWidth_us);
+        recalculate_pulsewidth();
     } 
 }
+
+void PWM::recalculate_pulsewidth(void) 
+{
+    // clamp the percentage in case LinuxCNC sends something other than 0-100%
+    if (pwmPulseWidth <= 0) 
+    {
+        pwmPulseWidth = 0;
+    }
+    if (pwmPulseWidth > 100)
+    {
+        pwmPulseWidth = 100;
+    }
+
+    // Convert duty cycle % to us and update in hardware. 
+    // First check if the the duty cycle has exceeded PWM Max 1-256, and substitute the value if so.
+    // pwmPulseWidth and ptrPwmPulseWidth need to keep their values intact or else update method will run continuously.
+
+    if (pwmMax > 0 && (pwmPulseWidth / 100) * PWMMAX > pwmMax)
+    {
+        //int capped_pwm = (pwmMax * 100) / PWMMAX;            
+        //pwmPulseWidth_us = (pwmPeriod_us * capped_pwm) / 100.0;
+        //pwmPulseWidth = capped_pwm;
+        pwmPulseWidth = pwmMax;
+    }
+    hardware_PWM->change_pulsewidth(pwmPulseWidth);
+}
+
 
 void PWM::slowUpdate()
 {

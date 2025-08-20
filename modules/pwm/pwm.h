@@ -24,9 +24,10 @@ class PWM : public Module
 
         float pwmPeriod_us;                      // Period (us)
         float pwmPulseWidth;                // Pulse width (%)
-        int pwmPulseWidth_us;               // Pulse width (us)
 
 		bool variable_freq;
+
+		void recalculate_pulsewidth(void);
 
 	public:
 		PWM(volatile float&, volatile float&, bool, int, int, std::string);
