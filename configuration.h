@@ -17,11 +17,8 @@ namespace Config {
     constexpr uint32_t joints = 8;                 // Number of joints
     constexpr uint32_t variables = 6;              // Number of command values
 
-    #ifdef ETH_CTRL
-    constexpr uint32_t pruData = 0x64617461;       // "dat_" SPI payload for remora-eth-3.0 component
-    #else
-    constexpr uint32_t pruData = 0x64617400;       // "dat_" SPI payload for latest remora-core SPI component
-    #endif
+
+    constexpr uint32_t pruData = 0x64617461;       // "data" SPI payload
     constexpr uint32_t pruRead = 0x72656164;       // "read" SPI payload
     constexpr uint32_t pruWrite = 0x77726974;      // "writ" SPI payload
     constexpr uint32_t pruEstop = 0x65737470;      // "estp" SPI payload
