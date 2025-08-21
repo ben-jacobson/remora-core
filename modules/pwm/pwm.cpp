@@ -131,9 +131,6 @@ void PWM::recalculate_pulsewidth(void)
 
     if (pwmMax > 0 && (pwmPulseWidth / 100) * PWMMAX > pwmMax)
     {
-        //int capped_pwm = (pwmMax * 100) / PWMMAX;            
-        //pwmPulseWidth_us = (pwmPeriod_us * capped_pwm) / 100.0;
-        //pwmPulseWidth = capped_pwm;
         pwmPulseWidth = ((float)pwmMax / (float)PWMMAX) * 100;
     }
     hardware_PWM->change_pulsewidth(pwmPulseWidth);
