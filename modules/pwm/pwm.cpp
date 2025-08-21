@@ -20,7 +20,7 @@ std::shared_ptr<Module> PWM::create(const JsonObject& config, Remora* instance)
     //const char* comment = config["Comment"];
 
     //printf("\n%s\n",comment);
-    printf("Creating PWM at pin %s\n", pin);
+    printf("\nCreating PWM at pin %s\n", pin);
 
     /*printf("SP[i]: %d\n" // helps with a bit of debugging
        "PWM Max: %d\n"
@@ -42,7 +42,7 @@ std::shared_ptr<Module> PWM::create(const JsonObject& config, Remora* instance)
     }
 
     bool variable_freq = !strcmp(variable, "True");
-    printf("PWM variable_freq = %d\n", variable_freq);
+    //printf("PWM variable_freq = %d\n", variable_freq);
 
     //new_pwm = new PWM(*variable_pointers[period_sp], *variable_pointers[sp], variable_freq, period_us, pwmMax, pin);   
     //new_pwm->setPwmMax(pwmMax);
@@ -61,7 +61,7 @@ PWM::PWM(volatile float &_ptrPwmPeriod, volatile float &_ptrPwmPulseWidth, bool 
     pwmMax(_pwmMax),
     pin(_pin)
 {
-    printf("Creating variable frequency Hardware PWM at pin %s\n", pin.c_str());
+    //printf("Creating variable frequency Hardware PWM at pin %s\n", pin.c_str());
 
     // set initial period and pulse width
     if (variable_freq == true)
@@ -134,7 +134,7 @@ void PWM::recalculate_pulsewidth(void)
         //int capped_pwm = (pwmMax * 100) / PWMMAX;            
         //pwmPulseWidth_us = (pwmPeriod_us * capped_pwm) / 100.0;
         //pwmPulseWidth = capped_pwm;
-        pwmPulseWidth = pwmMax;
+        pwmPulseWidth = ((float)pwmMax / (float)PWMMAX) * 100;
     }
     hardware_PWM->change_pulsewidth(pwmPulseWidth);
 }
