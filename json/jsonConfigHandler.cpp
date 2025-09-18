@@ -82,6 +82,17 @@ JsonArray JsonConfigHandler::getModules() {
 
 uint8_t JsonConfigHandler::readConfigFromSD() {
 
+    //#define DEBUG_LOAD_DEFAULT_CONFIG
+    #ifdef DEBUG_LOAD_DEFAULT_CONFIG
+     printf("Loading default configuration\n\n");
+
+    for (uint32_t i = 0; i < sizeof(Config::defaultConfig); i++)
+    {
+        jsonContent.push_back(Config::defaultConfig[i]);
+    }
+    return makeRemoraStatus(RemoraErrorSource::NO_ERROR, RemoraErrorCode::CONFIG_LOADED_DEFAULT);
+    #endif
+
 	uint32_t bytesread; // bytes read count
 
     printf("\nReading JSON configuration file\n");
@@ -91,13 +102,6 @@ uint8_t JsonConfigHandler::readConfigFromSD() {
     if(f_mount(&SDFatFS, (TCHAR const*)SDPath, 0) != FR_OK)
 	{
     	printf("Failed to mount SD card\n");
-        
-    	//printf("Loading default configuration\n\n");
-		// for (uint32_t i = 0; i < sizeof(Config::defaultConfig); i++)
-		// {
-		// 	jsonContent.push_back(Config::defaultConfig[i]);
-		// }
-        // return makeRemoraStatus(RemoraErrorSource::NO_ERROR, RemoraErrorCode::CONFIG_LOADED_DEFAULT);
         return makeRemoraStatus(RemoraErrorSource::JSON_CONFIG, RemoraErrorCode::SD_MOUNT_FAILED, true);
     }
 
