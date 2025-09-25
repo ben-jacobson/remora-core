@@ -7,7 +7,6 @@
 ************************************************************************/
 std::shared_ptr<Module> PWM::create(const JsonObject& config, Remora* instance)
 {
-    //PWM* new_pwm;
     volatile float*     variable_pointers[Config::variables];
 
     int sp = config["SP[i]"];  // when reading this value off the rx buffer, it will return the duty cycle.  
@@ -17,12 +16,11 @@ std::shared_ptr<Module> PWM::create(const JsonObject& config, Remora* instance)
     const char* variable = config["Variable Freq"]; // by default all PWMs are variable.
     int period_sp = config["Period SP[i]"];
     int period_us = config["Period us"];
-    //const char* comment = config["Comment"];
 
     //printf("\n%s\n",comment);
     printf("\nCreating PWM at pin %s\n", pin);
 
-    /*printf("SP[i]: %d\n" // helps with a bit of debugging
+    /*printf("SP[i]: %d\n" // Enable debug if needed
        "PWM Max: %d\n"
        "PWM Pin: %s\n"
        "Hardware PWM: %s\n"
@@ -42,11 +40,6 @@ std::shared_ptr<Module> PWM::create(const JsonObject& config, Remora* instance)
     }
 
     bool variable_freq = !strcmp(variable, "True");
-    //printf("PWM variable_freq = %d\n", variable_freq);
-
-    //new_pwm = new PWM(*variable_pointers[period_sp], *variable_pointers[sp], variable_freq, period_us, pwmMax, pin);   
-    //new_pwm->setPwmMax(pwmMax);
-    //servoThread->registerModule(new_pwm);
 	return std::make_unique<PWM>(*variable_pointers[period_sp], *variable_pointers[sp], variable_freq, period_us, pwmMax, pin);
 }
 
@@ -61,8 +54,6 @@ PWM::PWM(volatile float &_ptrPwmPeriod, volatile float &_ptrPwmPulseWidth, bool 
     pwmMax(_pwmMax),
     pin(_pin)
 {
-    //printf("Creating variable frequency Hardware PWM at pin %s\n", pin.c_str());
-
     // set initial period and pulse width
     if (variable_freq == true)
     {
@@ -79,18 +70,16 @@ PWM::PWM(volatile float &_ptrPwmPeriod, volatile float &_ptrPwmPulseWidth, bool 
     }
 
     pwmPulseWidth = *ptrPwmPulseWidth;
-    //pwmPulseWidth_us = (pwmPeriod_us * pwmPulseWidth) / 100.0;
 
     setPwmMax(pwmMax);
     
     hardware_PWM = new HardwarePWM(pwmPeriod_us, pwmPulseWidth, pin); 
 }
 
-
-//float PWM::getPwmPeriod(void) { return pwmPeriod_us; }
-//float PWM::getPwmPulseWidth(void) { return pwmPulseWidth; }
-//int PWM::getPwmPulseWidth_us(void) { return pwmPulseWidth_us; }
-void PWM::setPwmMax(int pwmMax) { pwmMax = pwmMax; }
+void PWM::setPwmMax(int pwmMax) 
+{ 
+    pwmMax = pwmMax; 
+}
 
 void PWM::update()
 {
