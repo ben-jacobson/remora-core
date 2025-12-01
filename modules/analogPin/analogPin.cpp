@@ -19,10 +19,6 @@ AnalogPin::AnalogPin(volatile float &ptrFeedback, std::string _portAndPin) :
     portAndPin(std::move(_portAndPin))
 {
     this->adc = new AnalogIn(this->portAndPin);
-
-    // Take some readings to get the ADC up and running
-    //this->update();
-    //this->update();
 }
 
 void AnalogPin::update()
