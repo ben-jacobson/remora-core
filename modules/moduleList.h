@@ -15,6 +15,8 @@
 #include "stepgen/stepgen.h"
 #include "temperature/temperature.h"
 #include "tmc/tmc.h"
+#include "softEncoder/softEncoder.h"
+#include "qei/qei.h"
 
 #include "moduleInterrupt.h"
 

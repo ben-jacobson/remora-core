@@ -11,7 +11,9 @@ std::shared_ptr<Module> ModuleFactory::createModule(const char* _tname,
     if (strcmp(_tname, "Base") == 0) {
         if (strcmp(_mtype, "Stepgen") == 0) {
             return Stepgen::create(config, instance);
-        }
+        } else if (strcmp(_mtype, "Encoder") == 0) {
+            return SoftEncoder::create(config, instance);    
+        }        
     } else if (strcmp(_tname, "Servo") == 0) {
         if (strcmp(_mtype, "Blink") == 0) {
             return Blink::create(config, instance);
@@ -26,7 +28,9 @@ std::shared_ptr<Module> ModuleFactory::createModule(const char* _tname,
         } else if (strcmp(_mtype, "PWM") == 0) {
             return PWM::create(config, instance); 
         } else if (strcmp(_mtype, "Analog Pin") == 0) {
-            return AnalogPin::create(config, instance);             
+            return AnalogPin::create(config, instance);                      
+        } else if (strcmp(_mtype, "QEI") == 0) {
+            return QEI::create(config, instance);             
         }
     } else if (strcmp(_tname, "On load") == 0) {
     	if (strcmp(_mtype, "TMC2208") == 0) {
