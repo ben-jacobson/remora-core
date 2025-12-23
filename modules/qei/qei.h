@@ -4,13 +4,15 @@
 #include <string>
 #include "../../remora.h"
 #include "../../modules/module.h"
+#include "remora-hal/hardware_qei/hardware_qei.h"
 
 class QEI : public Module
 {
 
 	private:
 
-        //QEIdriver*              qei;
+        Hardware_QEI*           hardware_qei; 
+
 		volatile float*         ptrEncoderCount; 	    // pointer to the data source
 
         volatile uint16_t*      ptrData; 	            // pointer to the data source
@@ -24,8 +26,8 @@ class QEI : public Module
 
 	public:
 
-        QEI(volatile float &ptrEncoderCount);                                                // for channel A & B
-        QEI(volatile float &ptrEncoderCount, volatile uint16_t &ptrData, int bitNumber);     // For channels A & B, and index
+        QEI(volatile float &ptrEncoderCount, int modifier);                                                // for channel A & B
+        QEI(volatile float &ptrEncoderCount, volatile uint16_t &ptrData, int bitNumber, int modifier);     // For channels A & B, and index
 
         static std::shared_ptr<Module> create(const JsonObject& config, Remora* instance);
 		virtual void update(void);

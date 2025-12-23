@@ -35,6 +35,7 @@ namespace Config {
     constexpr uint32_t spiDmaTxIrqPriority = 4;
     constexpr uint32_t spiDmaRxIrqPriority = 5;
     constexpr uint32_t spiNssIrqPriority = 6;
+    constexpr uint32_t qeiIndexPriority = 7;
 
     // Serial configuration
     constexpr uint32_t pcBaud = 115200;            // UART baudrate
