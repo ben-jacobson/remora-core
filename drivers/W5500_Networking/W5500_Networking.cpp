@@ -487,8 +487,6 @@ namespace wiznet
                 return;
             }
         } while (temp == PHY_LINK_OFF);
-
-        printf(" Success!\n"); 
     }
 
     void wizchip_check(void)
@@ -497,7 +495,7 @@ namespace wiznet
         /* Read version register */
         if (getVER() != 0x51)
         {
-            printf(" ACCESS ERR : VERSION != 0x51, read value = 0x%02x\n", getVER());
+            printf("\nACCESS ERR : VERSION != 0x51, read value = 0x%02x\n", getVER());
 
             while (1)
                 ;
@@ -506,10 +504,13 @@ namespace wiznet
         /* Read version register */
         if (getVERSIONR() != 0x04)
         {
-            printf(" ACCESS ERR : VERSION != 0x04, read value = 0x%02x\n", getVERSIONR());
+            printf("\nACCESS ERR : VERSION != 0x04, read value = 0x%02x\n", getVERSIONR());
 
-            while (1)
+            while (1)       
                 ;
+        }
+        else {
+            printf(" Success!\n"); 
         }
     #endif
     }
