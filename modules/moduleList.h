@@ -17,7 +17,9 @@
 #include "tmc/tmc.h"
 #include "softEncoder/softEncoder.h"
 #include "qei/qei.h"
+#include "eStop/eStop.h"
 
 #include "moduleInterrupt.h"
 
 #endif
+

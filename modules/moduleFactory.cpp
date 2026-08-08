@@ -30,7 +30,9 @@ std::shared_ptr<Module> ModuleFactory::createModule(const char* _tname,
         } else if (strcmp(_mtype, "Analog Pin") == 0) {
             return AnalogPin::create(config, instance);                      
         } else if (strcmp(_mtype, "QEI") == 0) {
-            return QEI::create(config, instance);             
+            return QEI::create(config, instance);          
+        } else if (strcmp(_mtype, "eStop") == 0) {
+            return eStop::create(config, instance);                     
         }
     } else if (strcmp(_tname, "On load") == 0) {
     	if (strcmp(_mtype, "TMC2208") == 0) {
